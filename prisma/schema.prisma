@@ -31,6 +31,19 @@ enum JobStatus {
   CANCELED
   NEEDS_REVIEW
 }
+enum PlateLabExperimentStatus {
+  DRAFT
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELED
+}
+enum PlateLabAnnotationState {
+  PENDING
+  ANNOTATED
+  NO_VISIBLE_PLATE
+}
 
 model User {
   id String @id @default(cuid())
@@ -44,6 +57,90 @@ model User {
   accounts Account[]
   sessions Session[]
   memberships Membership[]
+  plateLabExperiments PlateLabExperiment[] @relation("PlateLabExperimentOwner")
+}
+model PlateLabExperiment {
+  id String @id @default(cuid())
+  ownerId String
+  status PlateLabExperimentStatus @default(DRAFT)
+  configuration Json
+  selectedModelId String?
+  startedAt DateTime?
+  completedAt DateTime?
+  canceledAt DateTime?
+  errorMessage String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  owner User @relation("PlateLabExperimentOwner", fields:[ownerId], references:[id], onDelete: Cascade)
+  images PlateLabImage[]
+  metricSnapshots PlateLabMetricSnapshot[]
+}
+model PlateLabImage {
+  id String @id @default(cuid())
+  experimentId String
+  originalName String
+  artifactKey String @unique
+  checksum String
+  contentType String
+  byteSize Int
+  width Int
+  height Int
+  status String @default("queued")
+  errorMessage String?
+  createdAt DateTime @default(now())
+  experiment PlateLabExperiment @relation(fields:[experimentId], references:[id], onDelete: Cascade)
+  detections PlateLabDetectionRun[]
+  outputs PlateLabOutput[]
+  annotationRevisions PlateLabAnnotationRevision[]
+}
+model PlateLabDetectionRun {
+  id String @id @default(cuid())
+  imageId String
+  modelId String
+  strategy String
+  threshold Float
+  iouThreshold Float?
+  detections Json
+  preprocessingMs Int
+  inferenceMs Int
+  postprocessingMs Int
+  warnings Json
+  errorMessage String?
+  createdAt DateTime @default(now())
+  image PlateLabImage @relation(fields:[imageId], references:[id], onDelete: Cascade)
+  @@unique([imageId, modelId, strategy, threshold, iouThreshold])
+}
+model PlateLabOutput {
+  id String @id @default(cuid())
+  imageId String
+  modelId String
+  method String
+  marginPercent Float
+  artifactKey String @unique
+  contentType String
+  byteSize Int
+  detectionCount Int
+  createdAt DateTime @default(now())
+  image PlateLabImage @relation(fields:[imageId], references:[id], onDelete: Cascade)
+}
+model PlateLabAnnotationRevision {
+  id String @id @default(cuid())
+  imageId String
+  revision Int
+  state PlateLabAnnotationState
+  boxes Json
+  tags Json
+  createdAt DateTime @default(now())
+  image PlateLabImage @relation(fields:[imageId], references:[id], onDelete: Cascade)
+  @@unique([imageId, revision])
+}
+model PlateLabMetricSnapshot {
+  id String @id @default(cuid())
+  experimentId String
+  annotationRevisionIds Json
+  metrics Json
+  createdAt DateTime @default(now())
+  experiment PlateLabExperiment @relation(fields:[experimentId], references:[id], onDelete: Cascade)
 }
 model AdminAuditEvent {
   id String @id @default(cuid())

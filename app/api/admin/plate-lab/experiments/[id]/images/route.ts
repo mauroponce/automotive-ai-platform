@@ -1,0 +1,5 @@
+import { AuthorizationError, requireSuperAdmin } from "@/lib/authorization";
+import { db } from "@/lib/db";
+import { addPlateLabImages } from "@/lib/services/plate-lab";
+export const runtime = "nodejs";
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) { try { const admin = await requireSuperAdmin(); const { id } = await params; const experiment = await db.plateLabExperiment.findFirst({ where: { id, ownerId: admin.id, status: "DRAFT" } }); if (!experiment) return Response.json({ error: { code: "not_found", message: "Draft experiment not found" } }, { status: 404 }); const form = await request.formData(); const files = form.getAll("images").filter((value): value is File => value instanceof File); const images = await addPlateLabImages(id, files); return Response.json({ data: images }, { status: 201 }); } catch (error) { if (error instanceof AuthorizationError) return Response.json({ error: { code: "forbidden", message: "Super admin access required" } }, { status: 403 }); return Response.json({ error: { code: "upload_failed", message: error instanceof Error ? error.message : "Unknown error" } }, { status: 400 }); } }

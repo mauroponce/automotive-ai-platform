@@ -1,5 +1,6 @@
 import { db } from "../lib/db";
 import { queue } from "../lib/queue";
+import { runPlateLabExperiment } from "../lib/services/plate-lab";
 
 async function start() {
   const boss = await queue();
@@ -16,6 +17,12 @@ async function start() {
         await db.generationAttempt.create({ data: { jobId: job.id, provider: "openai", modelIdentifier: (job.requestedSettings as { model: string }).model, status: "FAILED", errorMessage: error instanceof Error ? error.message : "Unknown error" } });
         throw error;
       }
+    }
+  });
+  await boss.work("plate-lab-experiment", async (jobs) => {
+    for (const message of jobs) {
+      const data = message.data as { experimentId: string };
+      await runPlateLabExperiment(data.experimentId);
     }
   });
 }

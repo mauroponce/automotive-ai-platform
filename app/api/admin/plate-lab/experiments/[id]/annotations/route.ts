@@ -1,0 +1,5 @@
+import { AuthorizationError, requireSuperAdmin } from "@/lib/authorization";
+import { db } from "@/lib/db";
+import { saveAnnotation } from "@/lib/services/plate-lab";
+import { z } from "zod";
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) { try { const admin = await requireSuperAdmin(); const { id } = await params; const owns = await db.plateLabExperiment.findFirst({ where: { id, ownerId: admin.id }, select: { id: true } }); if (!owns) return Response.json({ error: { code: "not_found", message: "Experiment not found" } }, { status: 404 }); const body = z.object({ imageId: z.string().cuid(), annotation: z.unknown() }).parse(await request.json()); return Response.json({ data: await saveAnnotation(id, body.imageId, body.annotation) }, { status: 201 }); } catch (error) { if (error instanceof AuthorizationError) return Response.json({ error: { code: "forbidden", message: "Super admin access required" } }, { status: 403 }); return Response.json({ error: { code: "annotation_failed", message: error instanceof Error ? error.message : "Unknown error" } }, { status: 400 }); } }
