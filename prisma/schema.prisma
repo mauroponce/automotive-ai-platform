@@ -12,6 +12,10 @@ enum OrganizationRole {
   DEALERSHIP_ADMIN
   DEALERSHIP_STAFF
 }
+enum PlatformRole {
+  USER
+  SUPER_ADMIN
+}
 enum AssetKind {
   VEHICLE
   SHOWROOM
@@ -35,9 +39,18 @@ model User {
   emailVerified DateTime?
   image String?
   passwordHash String?
+  platformRole PlatformRole @default(USER)
+  roleChangedAt DateTime?
   accounts Account[]
   sessions Session[]
   memberships Membership[]
+}
+model AdminAuditEvent {
+  id String @id @default(cuid())
+  actorId String?
+  subjectUserId String
+  action String
+  createdAt DateTime @default(now())
 }
 model Account {
   id String @id @default(cuid())

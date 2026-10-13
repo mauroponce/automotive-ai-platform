@@ -1,0 +1,2 @@
+import { CreditBalance, EmptyState, PageHeader } from "@/components/portal-ui";
+export default function Credits(){return <><PageHeader eyebrow="Credits" title="Manage your credits" description="Payments are only credited after a verified payment-provider webhook."/><CreditBalance/><EmptyState title="Credit packages are not configured" description="Mercado Pago Checkout Pro must be configured before purchases can be enabled."/></>}

@@ -1,0 +1,13 @@
+import { PrismaClient } from "@prisma/client";
+const db=new PrismaClient();
+const userId=process.env.SUPER_ADMIN_USER_ID;
+const googleAccountId=process.env.SUPER_ADMIN_GOOGLE_ACCOUNT_ID;
+if(process.env.CONFIRM_PROMOTE_SUPER_ADMIN!=="PROMOTE_SINGLE_SUPER_ADMIN")throw new Error("Set CONFIRM_PROMOTE_SUPER_ADMIN=PROMOTE_SINGLE_SUPER_ADMIN.");
+if(!userId&&!googleAccountId)throw new Error("Set SUPER_ADMIN_USER_ID or SUPER_ADMIN_GOOGLE_ACCOUNT_ID.");
+const user= userId ? await db.user.findUnique({where:{id:userId}}) : await db.account.findFirst({where:{provider:"google",providerAccountId:googleAccountId!},include:{user:true}}).then(account=>account?.user ?? null);
+if(!user)throw new Error("No matching authenticated user was found.");
+const existing=await db.user.findFirst({where:{platformRole:"SUPER_ADMIN"}});
+if(existing&&existing.id!==user.id)throw new Error("A different super admin already exists. Demote it through a controlled administrative process first.");
+await db.$transaction([db.user.update({where:{id:user.id},data:{platformRole:"SUPER_ADMIN",roleChangedAt:new Date()}}),db.adminAuditEvent.create({data:{subjectUserId:user.id,action:"promote_super_admin"}})]);
+console.log(`Promoted user ${user.id} to SUPER_ADMIN.`);
+await db.$disconnect();

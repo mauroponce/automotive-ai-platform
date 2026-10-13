@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AutoFrame AI — Super Admin · Diseño v2</title>
+  <style>
+    :root{
+      --bg:#f5f7f4;
+      --panel:#ffffff;
+      --panel-2:#f8faf7;
+      --text:#132118;
+      --muted:#627267;
+      --line:#dfe7e0;
+      --brand:#11382c;
+      --brand-2:#1b5845;
+      --brand-soft:#e7f1ec;
+      --accent:#fb6b35;
+      --success:#1f8f5f;
+      --warning:#d18c18;
+      --danger:#d04f45;
+      --info:#1b6fbc;
+      --shadow:0 14px 45px rgba(9,24,16,.08);
+      --radius:22px;
+      --radius-sm:16px;
+      --max:1440px;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:linear-gradient(180deg,#f8faf8 0%,#f2f6f3 100%);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+    a{text-decoration:none;color:inherit}
+    button,input,select,textarea{font:inherit}
+    .app{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh}
+    .sidebar{display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;padding:26px 18px;border-right:1px solid var(--line);background:rgba(248,250,248,.92);backdrop-filter:blur(12px)}
+    .brand{display:flex;align-items:center;gap:10px;padding:4px 8px 20px;font-weight:800;font-size:18px}
+    .brand .auto{color:#0d1f18}.brand .frame{color:var(--accent)}.brand .ai{color:#163628}
+    .side-group{margin-top:18px;margin-bottom:20px}
+    .side-label{padding:0 12px 8px;color:#809083;font-size:11px;text-transform:uppercase;letter-spacing:.12em;font-weight:700}
+    .nav{display:flex;flex-direction:column;gap:8px}
+    .nav button{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;background:transparent;color:#536357;padding:13px 14px;border-radius:16px;text-align:left;cursor:pointer;transition:.18s}
+    .nav button:hover{background:#eef4ef;color:#1d3026}
+    .nav button.active{background:linear-gradient(135deg,#0f2e24,#133d2f);color:#fff;box-shadow:0 8px 18px rgba(16,48,36,.18)}
+    .nav .meta{font-size:12px;padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.14);color:inherit}
+    .nav button:not(.active) .meta{background:#e9efea;color:#506156}
+    .profile{margin-top:auto;padding:16px 12px;border:1px solid var(--line);border-radius:20px;background:var(--panel)}
+    .profile .pill{display:inline-flex;padding:7px 10px;border-radius:999px;background:#edf7f1;color:#28774e;font-size:12px;font-weight:700;margin-bottom:10px}
+    .profile h4{margin:0 0 4px;font-size:16px}.profile p{margin:0;color:var(--muted);font-size:13px;line-height:1.45}
+
+    .main{min-width:0}
+    .topbar{display:flex;align-items:center;justify-content:space-between;padding:22px 28px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(245,247,244,.86);backdrop-filter:blur(10px);z-index:20}
+    .topbar h1{margin:0;font-size:15px;font-weight:700;color:#55675c}
+    .top-actions{display:flex;align-items:center;gap:12px}
+    .ghost,.primary,.secondary,.danger{
+      border:0;border-radius:14px;padding:11px 16px;font-weight:700;cursor:pointer;transition:.18s;
+    }
+    .ghost{background:#fff;border:1px solid var(--line);color:#274034}
+    .primary{background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#fff;box-shadow:0 8px 18px rgba(17,56,44,.18)}
+    .secondary{background:#eff5f0;color:#244032}
+    .danger{background:#fff1f0;color:var(--danger);border:1px solid #f4d2cf}
+
+    .content{max-width:var(--max);padding:28px;margin:0 auto}
+    .page{display:none;animation:fade .18s ease}
+    .page.active{display:block}
+    @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+    .hero{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;flex-wrap:wrap;margin-bottom:24px}
+    .hero h2{margin:0 0 8px;font-size:44px;line-height:1.05;letter-spacing:-.03em}
+    .hero p{margin:0;color:var(--muted);max-width:760px;line-height:1.55}
+    .badge-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+    .badge{display:inline-flex;align-items:center;gap:8px;padding:9px 12px;background:#fff;border:1px solid var(--line);border-radius:999px;color:#3d5647;font-size:13px;font-weight:700}
+
+    .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:22px}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .stat{padding:20px}
+    .stat .kicker{font-size:13px;color:var(--muted);margin-bottom:10px}
+    .stat .value{font-size:38px;font-weight:800;letter-spacing:-.03em;margin-bottom:6px}
+    .stat .delta{font-size:13px;font-weight:700}
+    .delta.good{color:var(--success)}.delta.warn{color:var(--warning)}.delta.bad{color:var(--danger)}
+
+    .grid-2{display:grid;grid-template-columns:1.2fr .8fr;gap:18px;margin-bottom:22px}
+    .section{padding:20px}
+    .section h3{margin:0 0 8px;font-size:22px;letter-spacing:-.02em}
+    .section p.sub{margin:0 0 18px;color:var(--muted);font-size:14px;line-height:1.5}
+
+    .table{display:flex;flex-direction:column;gap:12px}
+    .row{display:grid;grid-template-columns:1.2fr .65fr .55fr .5fr auto;gap:12px;align-items:center;padding:14px 16px;border:1px solid var(--line);border-radius:18px;background:#fbfcfb}
+    .row .title{font-weight:800}.row .meta-sm{font-size:13px;color:var(--muted)}
+    .pill{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;font-size:12px;font-weight:800}
+    .pill.success{background:#e9f7ef;color:#237a52}
+    .pill.warning{background:#fff5df;color:#ad7614}
+    .pill.danger{background:#fff0ef;color:#b94c45}
+    .pill.info{background:#eaf3fb;color:#2069ab}
+
+    .progress-box{padding:16px;border-radius:18px;background:#f8fbf9;border:1px solid var(--line);margin:14px 0}
+    .progress-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px}
+    .bar{height:12px;background:#eaf1eb;border-radius:999px;overflow:hidden}
+    .bar>span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--brand-2),#2f8a68)}
+    .progress-meta{display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:13px;margin-top:8px;flex-wrap:wrap}
+
+    .mini-kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .mini{padding:16px;border:1px solid var(--line);border-radius:18px;background:#fbfcfb}
+    .mini h4{margin:0;font-size:13px;color:var(--muted)}
+    .mini strong{display:block;margin-top:8px;font-size:26px;letter-spacing:-.02em}
+
+    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+    .tabs button{padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:#fff;color:#43554a;font-weight:700;cursor:pointer}
+    .tabs button.active{background:#123528;color:#fff;border-color:#123528}
+    .tab-panel{display:none}.tab-panel.active{display:block}
+
+    .toolbar{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+    .filters{display:flex;gap:10px;flex-wrap:wrap}
+    .filters select,.filters input,.field,textarea{padding:11px 13px;border:1px solid var(--line);background:#fff;border-radius:14px;color:#264033;min-height:46px}
+    .filters input{min-width:240px}
+
+    .review-layout{display:grid;grid-template-columns:1fr 1.2fr;gap:18px}
+    .queue{display:flex;flex-direction:column;gap:12px;max-height:760px;overflow:auto;padding-right:2px}
+    .queue-item{padding:16px;border-radius:18px;border:1px solid var(--line);background:#fff;cursor:pointer;transition:.16s}
+    .queue-item.active{border-color:#174637;box-shadow:0 8px 18px rgba(14,46,34,.08);background:#f7fbf8}
+    .queue-item h4{margin:0 0 6px;font-size:17px}
+    .queue-item p{margin:0;color:var(--muted);font-size:13px;line-height:1.45}
+    .queue-meta{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
+
+    .detail{padding:18px}
+    .detail-top{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap;margin-bottom:16px}
+    .detail h3{margin:0;font-size:26px;letter-spacing:-.02em}
+    .detail small{display:block;color:var(--muted);margin-top:5px}
+    .compare{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+    .image-card{border:1px solid var(--line);border-radius:20px;background:#fcfdfc;overflow:hidden}
+    .image-card .head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line);font-weight:800}
+    .image-card .ph{aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;padding:20px;background:
+      radial-gradient(circle at 20% 15%,rgba(255,255,255,.85),rgba(255,255,255,.1) 30%),
+      linear-gradient(180deg,#dce6df 0%,#c8d7cd 45%,#becbc1 100%);
+      color:#20352b;text-align:center;font-weight:700}
+    .image-card .ph.generated{background:
+      radial-gradient(circle at 25% 14%,rgba(255,255,255,.95),rgba(255,255,255,.18) 28%),
+      linear-gradient(180deg,#eff4f1 0%,#d6e1da 38%,#c8d3cc 100%)}
+    .image-card .caption{padding:12px 14px;color:var(--muted);font-size:13px;line-height:1.5}
+
+    .meta-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px}
+    .meta-card{padding:14px;border:1px solid var(--line);border-radius:16px;background:#fbfcfb}
+    .meta-card h5{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#7a8b80}
+    .meta-card strong{font-size:18px}
+    .checklist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:16px 0}
+    .check{padding:14px;border-radius:16px;background:#f8fbf9;border:1px solid var(--line)}
+    .check strong{display:block;margin-bottom:4px}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+
+    .lab-layout{display:grid;grid-template-columns:360px 1fr;gap:18px}
+    .form-stack{display:flex;flex-direction:column;gap:14px}
+    .fieldset{padding:16px;border:1px solid var(--line);border-radius:18px;background:#fbfcfb}
+    .fieldset h4{margin:0 0 12px;font-size:16px}
+    .field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .upload-zone{padding:26px 18px;border-radius:18px;border:1.5px dashed #bfd0c3;background:#f7fbf8;text-align:center;color:#526459}
+    .model-options{display:flex;flex-wrap:wrap;gap:10px}
+    .toggle{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#fff;font-weight:700;font-size:13px}
+    .toggle.active{border-color:#174637;background:#ecf6f1;color:#14382b}
+
+    .results-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+    .result-card{border:1px solid var(--line);border-radius:20px;background:#fff;overflow:hidden}
+    .result-top{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:14px;border-bottom:1px solid var(--line)}
+    .result-top h4{margin:0;font-size:16px}
+    .score{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:999px;background:#edf7f1;color:#277950;font-size:12px;font-weight:800}
+    .score.warn{background:#fff5e5;color:#b1740d}
+    .result-img{aspect-ratio:4/3;background:linear-gradient(180deg,#eef4ef 0%,#d7e1d9 50%,#cad4cc 100%);display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font-weight:700;color:#294136}
+    .metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:14px}
+    .metric{padding:12px;border-radius:14px;background:#f8fbf9;border:1px solid var(--line)}
+    .metric h5{margin:0 0 6px;font-size:11px;color:#7d8c81;text-transform:uppercase;letter-spacing:.08em}
+    .metric strong{font-size:18px}
+    .result-actions{display:flex;gap:10px;flex-wrap:wrap;padding:0 14px 14px}
+
+    .simple-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+    .simple-card{padding:18px}
+    .simple-card h4{margin:0 0 8px;font-size:16px}.simple-card p{margin:0;color:var(--muted);font-size:14px;line-height:1.5}
+
+    .footer-note{margin-top:20px;padding:14px 16px;border-radius:16px;background:#fff8df;border:1px solid #f4e4a7;color:#765c10;font-size:13px;line-height:1.55}
+
+    .mobile-bar{display:none}
+    /* Fix v1: mobile-menu was visible on desktop because it had no base display rule. */
+    .mobile-menu{display:none;max-height:calc(100vh - 84px);overflow-y:auto}
+    .demo-chip{font-size:11px;font-weight:700;background:#fff5e9;color:#b06123;border:1px solid #f4e3ce;padding:6px 9px;border-radius:999px;margin-left:12px;white-space:nowrap}
+    .field{width:100%}
+    select,textarea,input{max-width:100%;min-width:0}
+    .meta-card strong,.metric strong{overflow-wrap:anywhere}
+    button{min-width:0}
+    button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #65a58c;outline-offset:2px}
+    .nav button{font-size:13px;padding:11px 13px}
+    .brand{gap:2px;letter-spacing:-.04em}
+    .topbar{min-height:74px}
+    .row{grid-template-columns:minmax(0,1.55fr) minmax(105px,.64fr) minmax(58px,.46fr) minmax(74px,.53fr) auto}
+    .section .sub{max-width:780px}
+    .queue-item:hover{border-color:#9ebca9}
+    .queue-item:focus-visible{outline:3px solid #65a58c;outline-offset:2px}
+    .review-layout{grid-template-columns:minmax(300px,.7fr) minmax(0,1.3fr)}
+    .compare,.results-grid{min-width:0}
+    .image-card .ph,.result-img{padding:0;overflow:hidden}
+    .art-svg{width:100%;height:100%;display:block}
+    .scene-note{font-size:11px;line-height:1.45;color:#7c897f}
+    .workspace-panel{padding:22px}
+    .workspace-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+    .workspace-title h3{margin:0}
+    .detail-label{font-size:11px;color:#6f8173;text-transform:uppercase;letter-spacing:.1em;font-weight:800;margin:0 0 7px;display:block}
+    .stack{display:flex;flex-direction:column;gap:12px}
+    .split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+    .studio-layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(320px,.65fr);gap:18px}
+    .studio-compare{position:relative;aspect-ratio: 16/10;overflow:hidden;border-radius:18px;border:1px solid var(--line);background:#dee8de;isolation:isolate}
+    .studio-compare .scene{position:absolute;inset:0;width:100%;height:100%}
+    .studio-compare .scene.after{clip-path:inset(0 0 0 50%)}
+    .studio-compare .divider-marker{position:absolute;top:0;bottom:0;left:50%;width:2px;background:#fff;z-index:5;box-shadow:0 0 6px #182d2588;pointer-events:none}
+    .studio-compare .handle{position:absolute;z-index:5;top:50%;left:50%;transform:translate(-50%,-50%);color:#153629;font-weight:900;background:#fff;border-radius:999px;width:48px;height:48px;display:grid;place-items:center;box-shadow:0 10px 24px #172f2940;pointer-events:none}
+    .studio-compare input{position:absolute;z-index:6;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize}
+    .overlay-tag{position:absolute;z-index:4;top:14px;background:#fffdf9ef;border-radius:9px;padding:7px 10px;font-size:12px;font-weight:800;color:#1a392b;pointer-events:none}
+    .overlay-tag.left{left:14px}.overlay-tag.right{right:14px}
+    .labelrow{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+    .notice{background:#fff7e3;border:1px solid #f0dfab;border-radius:14px;padding:12px 14px;color:#8b6a18;font-size:13px;line-height:1.5}
+    .variant-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    .variant{border:1px solid var(--line);border-radius:15px;overflow:hidden;cursor:pointer;background:#fff}
+    .variant.active{border:2px solid #1d6b50}
+    .variant .scene{aspect-ratio:4/3}
+    .variant p{margin:0;padding:9px 10px;font-size:12px;font-weight:800}
+    .ledger-row{display:grid;grid-template-columns:1.4fr .7fr .8fr .7fr auto;gap:12px;align-items:center;padding:15px;border-bottom:1px solid var(--line)}
+    .ledger-row:last-child{border-bottom:0}
+    .user-row{display:grid;grid-template-columns:1.2fr .9fr .6fr .7fr auto;gap:12px;align-items:center;padding:15px;border-bottom:1px solid var(--line)}
+    .user-row:last-child{border-bottom:0}
+    .avatar{width:38px;height:38px;border-radius:14px;background:#e4efe7;color:#1e6249;display:grid;place-items:center;font-weight:850;flex:none}
+    .user-cell{display:flex;align-items:center;gap:10px}
+    .modal-backdrop{position:fixed;inset:0;z-index:100;background:#071b12a6;display:none;align-items:center;justify-content:center;padding:18px}
+    .modal-backdrop.open{display:flex}
+    .modal{width:min(100%,480px);background:#fff;border-radius:22px;padding:24px;box-shadow:0 26px 80px #0004}
+    .modal h3{font-size:22px;margin:0 0 8px}.modal p{font-size:14px;color:var(--muted);line-height:1.5}
+    .toast-stack{position:fixed;right:20px;bottom:20px;z-index:120;display:flex;flex-direction:column;gap:10px;pointer-events:none}
+    .toast{background:#153e30;color:white;padding:13px 18px;border-radius:14px;box-shadow:0 12px 30px #122a1b30;max-width:330px;font-size:13px;line-height:1.4}
+    .table-wrap{overflow-x:auto}
+    .table-wrap .ledger-row,.table-wrap .user-row{min-width:690px}
+
+
+    @media (max-width:1280px){
+      .studio-layout{grid-template-columns:1fr}
+      .review-layout{grid-template-columns:minmax(260px,.75fr) minmax(0,1.25fr)}
+      .top-actions .ghost{display:none}
+    }
+    @media (max-width:1180px){
+      .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .grid-2,.review-layout,.lab-layout{grid-template-columns:1fr}
+      .results-grid{grid-template-columns:1fr}
+      .meta-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    }
+    @media (max-width:920px){
+      .app{grid-template-columns:1fr}
+      .sidebar{display:none}
+      .mobile-bar{display:flex;position:sticky;top:0;z-index:30;align-items:center;justify-content:space-between;padding:16px 18px;background:rgba(248,250,248,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+      .mobile-menu{position:fixed;inset:68px 12px auto 12px;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:20px;padding:14px;display:none;z-index:40}
+      .mobile-menu.open{display:block}
+      .mobile-menu .nav button.active{background:linear-gradient(135deg,#0f2e24,#133d2f)}
+      .topbar{position:static;padding-top:18px}
+      .hero h2{font-size:34px}
+      .content{padding:20px 16px 28px}
+      .compare,.field-row,.checklist,.simple-grid,.split{grid-template-columns:1fr}
+      .demo-chip{display:none}
+    }
+    @media (max-width:640px){
+      .stats,.meta-grid,.mini-kpis,.variant-grid{grid-template-columns:1fr}
+      .hero{margin-bottom:18px}
+      .hero h2{font-size:30px}
+      .topbar{padding:14px 16px}
+      .top-actions{width:auto;justify-content:flex-end;flex-wrap:wrap}
+      .top-actions button{flex:1}
+      .filters input{min-width:0;width:100%}
+      .row{grid-template-columns:1fr;align-items:flex-start}
+      .result-actions,.actions{flex-direction:column}
+      .detail h3{font-size:22px}
+      .top-actions .secondary{display:none}
+    }
+  </style>
+</head>
+<body>
+  <div class="mobile-bar">
+    <div class="brand"><span class="auto">auto</span><span class="frame">frame</span><span class="ai">AI</span></div>
+    <button class="ghost" id="mobileToggle">Menú</button>
+  </div>
+  <div class="mobile-menu" id="mobileMenu">
+    <div class="nav" id="mobileNav"></div>
+  </div>
+
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand"><span class="auto">auto</span><span class="frame">frame</span><span class="ai">AI</span></div>
+      <div class="side-group">
+        <div class="side-label">Workspace</div>
+        <div class="nav" id="sideNav"></div>
+      </div>
+      <div class="profile">
+        <span class="pill">super_admin</span>
+        <h4>Mauro</h4>
+        <p>Owner workspace · acceso total a prompts, laboratorios, revisión de imágenes reportadas, costos y configuración global.</p>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <h1>Panel de administración <span class="demo-chip">Prototipo interactivo · datos ficticios</span></h1>
+        <div class="top-actions">
+          <button class="ghost" data-demo="El acceso al portal de usuario se habilita al integrar la aplicación real.">Vista usuario</button>
+          <button class="secondary" data-demo="La exportación real estará conectada al backend.">Exportar reporte</button>
+          <button class="primary" data-go="lab">Nuevo benchmark</button>
+        </div>
+      </div>
+
+      <div class="content">
+        <section id="page-overview" class="page active">
+          <div class="hero">
+            <div>
+              <h2>Panel de control</h2>
+              <p>Supervisá la operación de AutoFrame AI desde un único panel: cola de revisión, comparaciones entre modelos, control de costos, trabajos activos y salud general del sistema.</p>
+              <div class="badge-row">
+                <span class="badge">42 reportes resueltos esta semana</span>
+                <span class="badge">3 proveedores habilitados</span>
+                <span class="badge">Retención automática: 30 días</span>
+              </div>
+            </div>
+            <div class="badge">Última sincronización · simulación</div>
+          </div>
+
+          <div class="stats">
+            <div class="card stat"><div class="kicker">Reportes pendientes</div><div class="value">12</div><div class="delta warn">+4 desde ayer</div></div>
+            <div class="card stat"><div class="kicker">Jobs activos</div><div class="value">38</div><div class="delta good">94% dentro de SLA</div></div>
+            <div class="card stat"><div class="kicker">Créditos vendidos hoy</div><div class="value">1.260</div><div class="delta good">USD 315 estimados</div></div>
+            <div class="card stat"><div class="kicker">Aprobación global</div><div class="value">88%</div><div class="delta bad">-3 pts vs semana pasada</div></div>
+          </div>
+
+          <div class="grid-2">
+            <div class="card section">
+              <h3>Operación en tiempo real</h3>
+              <p class="sub">Resumen de actividad y trabajos más sensibles para seguimiento inmediato.</p>
+              <div class="table">
+                <div class="row">
+                  <div><div class="title">BMW 320i · lote de 8 imágenes</div><div class="meta-sm">Concesionaria: Nord Motors · user: ventas@nordmotors.com</div></div>
+                  <div><span class="pill info">Procesando</span></div>
+                  <div class="meta-sm">6 / 8</div>
+                  <div class="meta-sm">Sunburst</div>
+                  <button class="ghost" data-go="jobs">Ver job</button>
+                </div>
+                <div class="row">
+                  <div><div class="title">Toyota Hilux 2019 · reporte de llantas</div><div class="meta-sm">Motivo: "el vehículo fue modificado" · hace 21 min</div></div>
+                  <div><span class="pill warning">Revisión</span></div>
+                  <div class="meta-sm">Alta prioridad</div>
+                  <div class="meta-sm">1 imagen</div>
+                  <button class="ghost" data-go="review">Abrir</button>
+                </div>
+                <div class="row">
+                  <div><div class="title">Benchmark showroom_v3</div><div class="meta-sm">Comparando 4 modelos con prompt automotive_showroom_v2</div></div>
+                  <div><span class="pill success">Completado</span></div>
+                  <div class="meta-sm">4 resultados</div>
+                  <div class="meta-sm">USD 0.38</div>
+                  <button class="ghost" data-go="lab">Comparar</button>
+                </div>
+              </div>
+
+              <div class="progress-box">
+                <div class="progress-head">
+                  <strong>Capacidad del worker</strong>
+                  <span class="pill info">38 de 50 slots ocupados</span>
+                </div>
+                <div class="bar"><span style="width:76%"></span></div>
+                <div class="progress-meta">
+                  <span>Concurrencia objetivo: 50</span>
+                  <span>Backlog estimado: 14 min</span>
+                  <span>Errores últimas 24h: 7</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="card section">
+              <h3>Safety & business checks</h3>
+              <p class="sub">Alertas de salud del sistema, credenciales y métricas operativas.</p>
+              <div class="mini-kpis">
+                <div class="mini"><h4>OpenAI reserved today</h4><strong>$28.44</strong></div>
+                <div class="mini"><h4>Monthly global limit</h4><strong>$250.00</strong></div>
+                <div class="mini"><h4>Storage expiring in 7d</h4><strong>182 files</strong></div>
+                <div class="mini"><h4>Pending refunds</h4><strong>5</strong></div>
+              </div>
+              <div class="footer-note">Las comparaciones del laboratorio siempre deben confirmarse explícitamente antes de enviar requests facturables. Los resultados del portal de usuario sólo deben marcarse como aprobados cuando la fidelidad física del vehículo esté verificada.</div>
+            </div>
+          </div>
+
+          <div class="simple-grid">
+            <div class="card simple-card">
+              <h4>Review queue</h4>
+              <p>Entrá a la cola de imágenes reportadas para corregir resultados, reintentar prompts y definir reintegros o cierres.</p>
+            </div>
+            <div class="card simple-card">
+              <h4>Model evaluation lab</h4>
+              <p>Probá Sunburst, Flare, gpt-image-2 y futuros proveedores como un laboratorio controlado y comparable.</p>
+            </div>
+            <div class="card simple-card">
+              <h4>Storage retention</h4>
+              <p>Auditá qué archivos vencen por la política de 30 días y qué excepciones deben conservarse para análisis o soporte.</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="page-review" class="page">
+          <div class="hero">
+            <div>
+              <h2>Imágenes reportadas</h2>
+              <p>Revisá fotografías marcadas por usuarios, compará original vs resultado, corregí con nuevos prompts o configuraciones y decidí si el caso se aprueba, se reintenta o requiere reintegro.</p>
+            </div>
+            <button class="primary" data-go="studio">Abrir estudio de corrección</button>
+          </div>
+
+          <div class="tabs" id="reviewTabs">
+            <button class="active" data-tab="pending">Pendientes</button>
+            <button data-tab="inprogress">En revisión</button>
+            <button data-tab="resolved">Resueltas</button>
+          </div>
+
+          <div class="toolbar">
+            <div class="filters">
+              <input placeholder="Buscar por vehículo, usuario o concesionaria" />
+              <select><option>Todos los motivos</option><option>Vehículo modificado</option><option>Patente incorrecta</option><option>Fondo defectuoso</option></select>
+              <select><option>Todas las prioridades</option><option>Alta</option><option>Media</option><option>Baja</option></select>
+            </div>
+            <div class="filters">
+              <button class="ghost">Asignarme 5 pendientes</button>
+              <button class="secondary">Exportar cola</button>
+            </div>
+          </div>
+
+          <div class="review-layout">
+            <div class="queue card section">
+              <div class="queue-item active" data-select="1" data-status="pending" tabindex="0" role="button">
+                <h4>Toyota Hilux 2019 · foto 04</h4>
+                <p>“La IA cambió el diseño de la llanta y se nota raro el guardabarros delantero.”</p>
+                <div class="queue-meta"><span class="pill warning">Alta prioridad</span><span class="meta-sm">Reportado hace 21 min</span></div>
+              </div>
+              <div class="queue-item" data-select="2" data-status="inprogress" tabindex="0" role="button">
+                <h4>Volkswagen Amarok 2021 · foto 02</h4>
+                <p>Patente cubierta con logo mal centrado. El usuario solicita corrección sin costo.</p>
+                <div class="queue-meta"><span class="pill info">Patente</span><span class="meta-sm">Reportado hace 52 min</span></div>
+              </div>
+              <div class="queue-item" data-select="3" data-status="pending" tabindex="0" role="button">
+                <h4>Ford Ranger 2018 · foto 06</h4>
+                <p>Sombras y piso del showroom presentan artefactos visibles cerca del neumático trasero.</p>
+                <div class="queue-meta"><span class="pill danger">Calidad</span><span class="meta-sm">Reportado hace 2 h</span></div>
+              </div>
+              <div class="queue-item" data-select="4" data-status="resolved" tabindex="0" role="button">
+                <h4>BMW 320i 2020 · foto 01</h4>
+                <p>Cliente dice que el paragolpes delantero quedó “más deportivo” que el real.</p>
+                <div class="queue-meta"><span class="pill warning">Fidelidad</span><span class="meta-sm">Reportado ayer</span></div>
+              </div>
+            </div>
+
+            <div class="card detail">
+              <div class="detail-top">
+                <div>
+                  <h3>Toyota Hilux 2019 · foto 04</h3>
+                  <small>Concesionaria: Nord Motors · Usuario: ventas@nordmotors.com · Job #JOB-2041</small>
+                </div>
+                <span class="pill warning" id="reportStatusLabel">Pendiente de revisión</span>
+              </div>
+
+              <div class="compare">
+                <div class="image-card">
+                  <div class="head"><span>Original</span><span class="pill info">Input</span></div>
+                  <div class="ph">Foto real del vehículo<br/>lote celular · ángulo 3/4 frontal</div>
+                  <div class="caption">La foto original es la fuente autoritativa. Debe preservarse color, llantas, carrocería, accesorios y daños visibles.</div>
+                </div>
+                <div class="image-card">
+                  <div class="head"><span>Generada</span><span class="pill danger">Reportada</span></div>
+                  <div class="ph generated">Resultado en showroom premium<br/>Se percibe modificación en la llanta</div>
+                  <div class="caption" id="reportCaption">Resultado entregado al usuario. El reporte menciona llantas alteradas y ligera deformación de guardabarros.</div>
+                </div>
+              </div>
+
+              <div class="meta-grid">
+                <div class="meta-card"><h5>Modelo</h5><strong>gpt-image-2.5-sunburst</strong></div>
+                <div class="meta-card"><h5>Prompt version</h5><strong>automotive_showroom_v2</strong></div>
+                <div class="meta-card"><h5>Output profile</h5><strong>square_1200_jpg</strong></div>
+                <div class="meta-card"><h5>Credits charged</h5><strong>1 crédito</strong></div>
+                <div class="meta-card"><h5>Estimated cost</h5><strong>USD 0.05</strong></div>
+                <div class="meta-card"><h5>Attempts</h5><strong>1 de 2</strong></div>
+              </div>
+
+              <div class="checklist">
+                <div class="check"><strong>Motivo del usuario</strong><span class="meta-sm" id="reportReason">Se alteraron llantas, ópticas u otros componentes.</span></div>
+                <div class="check"><strong>Evaluador automático</strong><span class="meta-sm">Marcó "possible wheel mismatch" con confianza media.</span></div>
+                <div class="check"><strong>Acción sugerida</strong><span class="meta-sm" id="reportSuggestion">Regenerar con prompt reforzado y preservar llantas originales.</span></div>
+                <div class="check"><strong>Notas internas</strong><span class="meta-sm">Mantener fondo y encuadre, ajustar instrucciones de fidelidad física.</span></div>
+              </div>
+
+              <textarea class="field" rows="5">Nueva instrucción propuesta: preservar exactamente las llantas, neumáticos, guardabarros y línea de carrocería del vehículo original. No rediseñar ni estilizar piezas. Mantener el showroom premium y la perspectiva actual.</textarea>
+
+              <div class="actions">
+                <button class="primary" data-go="studio">Regenerar para revisión</button>
+                <button class="secondary" data-go="studio">Abrir en Correction Studio</button>
+                <button class="ghost" id="markInReview">Marcar en revisión</button>
+                <button class="ghost" id="closeReport">Aprobar y cerrar</button>
+                <button class="danger" data-go="refunds">Evaluar reintegro</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="page-lab" class="page">
+          <div class="hero">
+            <div>
+              <h2>Model Evaluation Lab</h2>
+              <p>Compará resultados entre modelos generativos y proveedores. El laboratorio debe permitir probar configuraciones de OpenAI hoy y sumar nuevos motores mañana, manteniendo consistencia en inputs, prompts, costos y evaluación.</p>
+            </div>
+            <button class="primary">Start benchmark</button>
+          </div>
+
+          <div class="lab-layout">
+            <div class="card section">
+              <h3>Benchmark setup</h3>
+              <p class="sub">Definí inputs, prompt, perfil de salida, modelos y controles de costo antes de lanzar una comparación.</p>
+              <div class="form-stack">
+                <div class="fieldset">
+                  <h4>Inputs</h4>
+                  <label class="upload-zone" style="display:block;cursor:pointer"> <input type="file" accept="image/*" id="labOriginal" hidden> <span id="labOriginalName">Seleccionar imagen original del vehículo</span><br><small>Privado · max 15 MB · demo local</small></label>
+                  <div style="height:10px"></div>
+                  <label class="upload-zone" style="display:block;cursor:pointer"> <input type="file" accept="image/*" id="labReference" hidden> <span id="labReferenceName">Seleccionar showroom / referencia de patente</span><br><small>Opcional · demo local</small></label>
+                </div>
+
+                <div class="fieldset">
+                  <h4>Prompt & output</h4>
+                  <select class="field"><option>automotive_showroom_v2</option><option>automotive_showroom_v3_candidate</option><option>motorcycle_showroom_v1</option></select>
+                  <div style="height:10px"></div>
+                  <select class="field"><option>square_1200_jpg</option><option>mercadolibre_vehicle_1600x1200</option><option>master_1536x1024</option></select>
+                  <div style="height:10px"></div>
+                  <div class="field-row">
+                    <select class="field"><option>quality: high</option><option>quality: xhigh</option></select>
+                    <input class="field" value="1" type="number" min="1" max="4" />
+                  </div>
+                </div>
+
+                <div class="fieldset">
+                  <h4>Provider / models</h4>
+                  <div class="model-options">
+                    <span class="toggle active">OpenAI · gpt-image-2.5-sunburst</span>
+                    <span class="toggle active">OpenAI · gpt-image-2.5-flare</span>
+                    <span class="toggle active">OpenAI · gpt-image-2</span>
+                    <span class="toggle">Future provider · model_a</span>
+                    <span class="toggle">Future provider · model_b</span>
+                  </div>
+                </div>
+
+                <div class="fieldset">
+                  <h4>Execution controls</h4>
+                  <div class="field-row">
+                    <input class="field" value="USD 5.00" />
+                    <input class="field" value="Timeout 90s" />
+                  </div>
+                  <div style="height:10px"></div>
+                  <label class="toggle active"><input type="checkbox" checked /> Evaluar fidelidad automáticamente</label>
+                  <label class="toggle"><input type="checkbox" /> Guardar como benchmark reusable</label>
+                  <label class="toggle"><input type="checkbox" /> Requiere confirmación de gasto</label>
+                </div>
+
+                <button class="primary">Run comparison</button>
+              </div>
+            </div>
+
+            <div>
+              <div class="card section">
+                <h3>Comparative results</h3>
+                <p class="sub">Visualizá resultados lado a lado con métricas homogéneas para elegir la mejor combinación entre fidelidad, estética, costo y latencia.</p>
+                <div class="results-grid">
+                  <div class="result-card">
+                    <div class="result-top">
+                      <div><h4>OpenAI · Sunburst</h4><small style="color:var(--muted)">automotive_showroom_v2</small></div>
+                      <span class="score">Best fidelity · 92</span>
+                    </div>
+                    <div class="result-img">Resultado comparativo · showroom premium<br>Fidelidad alta y sombras consistentes</div>
+                    <div class="metrics">
+                      <div class="metric"><h5>Fidelity</h5><strong>92/100</strong></div>
+                      <div class="metric"><h5>Cost</h5><strong>$0.05</strong></div>
+                      <div class="metric"><h5>Latency</h5><strong>24s</strong></div>
+                    </div>
+                    <div class="result-actions">
+                      <button class="primary">Set as baseline</button>
+                      <button class="ghost">Inspect diff</button>
+                    </div>
+                  </div>
+
+                  <div class="result-card">
+                    <div class="result-top">
+                      <div><h4>OpenAI · Flare</h4><small style="color:var(--muted)">automotive_showroom_v2</small></div>
+                      <span class="score warn">Fastest · 86</span>
+                    </div>
+                    <div class="result-img">Resultado comparativo · más rápido<br>ligera simplificación en llantas</div>
+                    <div class="metrics">
+                      <div class="metric"><h5>Fidelity</h5><strong>86/100</strong></div>
+                      <div class="metric"><h5>Cost</h5><strong>$0.05</strong></div>
+                      <div class="metric"><h5>Latency</h5><strong>16s</strong></div>
+                    </div>
+                    <div class="result-actions">
+                      <button class="secondary">Mark as candidate</button>
+                      <button class="ghost">Inspect diff</button>
+                    </div>
+                  </div>
+
+                  <div class="result-card">
+                    <div class="result-top">
+                      <div><h4>OpenAI · gpt-image-2</h4><small style="color:var(--muted)">automotive_showroom_v2</small></div>
+                      <span class="score warn">Budget · 79</span>
+                    </div>
+                    <div class="result-img">Resultado comparativo · correcto<br>más artefactos en borde inferior</div>
+                    <div class="metrics">
+                      <div class="metric"><h5>Fidelity</h5><strong>79/100</strong></div>
+                      <div class="metric"><h5>Cost</h5><strong>$0.03</strong></div>
+                      <div class="metric"><h5>Latency</h5><strong>19s</strong></div>
+                    </div>
+                    <div class="result-actions">
+                      <button class="secondary">Keep for experiments</button>
+                      <button class="ghost">Inspect diff</button>
+                    </div>
+                  </div>
+
+                  <div class="result-card">
+                    <div class="result-top">
+                      <div><h4>Future provider · model_a</h4><small style="color:var(--muted)">reserved slot</small></div>
+                      <span class="score warn">Provider disabled</span>
+                    </div>
+                    <div class="result-img">Espacio preparado para proveedores adicionales<br>sin romper el flujo comparativo.</div>
+                    <div class="metrics">
+                      <div class="metric"><h5>Fidelity</h5><strong>—</strong></div>
+                      <div class="metric"><h5>Cost</h5><strong>—</strong></div>
+                      <div class="metric"><h5>Latency</h5><strong>—</strong></div>
+                    </div>
+                    <div class="result-actions">
+                      <button class="ghost">Configure provider</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="footer-note">El laboratorio no debe convertirse en parte del flujo del usuario final. Es una herramienta interna para decidir modelos, prompts, perfiles de salida y políticas de costos antes de aplicarlos al portal comercial.</div>
+            </div>
+          </div>
+        </section>
+
+
+        <section id="page-studio" class="page">
+          <div class="hero"><div><h2>Correction Studio</h2><p>Espacio de corrección manual: inspeccioná fidelidad física, ajustá instrucciones, compará variantes y prepará una respuesta al usuario.</p><div class="badge-row"><span class="badge">Caso #REP-1024</span><span class="badge">Toyota Hilux · Llantas modificadas</span><span class="badge">Una imagen reportada</span></div></div><button class="ghost" data-go="review">← Volver a reportes</button></div>
+          <div class="studio-layout">
+            <div class="stack">
+              <div class="card workspace-panel">
+                <div class="workspace-title"><h3>Comparación visual</h3><span class="pill warning">Revisión humana pendiente</span></div>
+                <div class="studio-compare" id="studioCompare">
+                  <div class="scene" data-scene="original"></div>
+                  <div class="scene after" data-scene="generated"></div>
+                  <div class="divider-marker"></div><div class="handle">⇄</div>
+                  <span class="overlay-tag left">Original</span><span class="overlay-tag right">Generada</span>
+                  <input type="range" id="compareRange" min="0" max="100" value="50" aria-label="Mover comparación antes y después">
+                </div>
+                <p class="scene-note">Imágenes ilustrativas del prototipo; no son resultados reales de OpenAI. La comparación usa un deslizador interactivo.</p>
+                <div class="labelrow"><strong>Revisión de fidelidad</strong><span class="pill danger">Rueda y guardabarros requieren control</span></div>
+                <div class="checklist">
+                  <label class="check"><input type="checkbox" checked> Color y carrocería conservados</label>
+                  <label class="check"><input type="checkbox"> Llantas idénticas al original</label>
+                  <label class="check"><input type="checkbox" checked> Patente correctamente cubierta</label>
+                  <label class="check"><input type="checkbox"> Sombras y perspectiva aceptables</label>
+                </div>
+              </div>
+              <div class="card workspace-panel">
+                <div class="workspace-title"><h3>Variantes de corrección</h3><span class="meta-sm">Elegí la mejor antes de entregar</span></div>
+                <div class="variant-grid" id="variants">
+                  <div class="variant active" role="button" tabindex="0" data-variant="0"><div class="scene" data-scene="generated"></div><p>01 · Original reportada</p></div>
+                  <div class="variant" role="button" tabindex="0" data-variant="1"><div class="scene" data-scene="candidate"></div><p>02 · Reintento v2</p></div>
+                  <div class="variant" role="button" tabindex="0" data-variant="2"><div class="scene" data-scene="candidate2"></div><p>03 · Ajuste manual</p></div>
+                </div>
+                <div class="actions"><button class="primary" data-demo="La versión seleccionada se entregaría al usuario después de validarla; en este prototipo no se envía nada.">Aprobar variante seleccionada</button><button class="secondary" id="newVariant">Simular nueva variante</button></div>
+              </div>
+            </div>
+            <div class="stack">
+              <div class="card workspace-panel">
+                <div class="workspace-title"><h3>Configuración de corrección</h3><span class="pill info">Sunburst</span></div>
+                <label class="detail-label" for="studioModel">Modelo generativo</label>
+                <select class="field" id="studioModel"><option>OpenAI · gpt-image-2.5-sunburst</option><option>OpenAI · gpt-image-2.5-flare</option><option>OpenAI · gpt-image-2</option></select>
+                <div style="height:14px"></div>
+                <label class="detail-label" for="studioPrompt">Prompt base</label>
+                <select class="field" id="studioPrompt"><option>automotive_showroom_v2 (baseline)</option><option>automotive_showroom_v3_candidate</option><option>motorcycle_showroom_v1</option></select>
+                <div style="height:14px"></div>
+                <label class="detail-label" for="studioInstructions">Instrucciones adicionales</label>
+                <textarea id="studioInstructions" class="field" rows="6">Preservar estrictamente las llantas, guardabarros, neumáticos, emblemas y perspectiva del vehículo original. No modificar piezas ni detalles físicos.</textarea>
+                <div style="height:14px"></div>
+                <div class="split"><div><span class="detail-label">Calidad</span><select class="field"><option>High</option><option>XHigh</option></select></div><div><span class="detail-label">Variantes</span><select class="field"><option>1 variante</option><option>2 variantes</option></select></div></div>
+                <div class="notice" style="margin-top:14px">En la implementación real, cada generación deberá mostrar su costo estimado antes de confirmar llamadas facturables a OpenAI.</div>
+                <div class="actions"><button class="primary" id="simulateCorrection">Probar corrección (demo)</button><button class="ghost" data-go="prompts">Administrar prompts</button></div>
+              </div>
+              <div class="card workspace-panel">
+                <h3>Resolución del reporte</h3><p class="sub">El crédito se consume solo cuando la imagen queda aprobada según la política del producto.</p>
+                <span class="detail-label">Respuesta al usuario</span>
+                <textarea class="field" rows="3">Detectamos un problema en la fidelidad de la imagen y estamos preparando una versión corregida sin costo.</textarea>
+                <div class="actions"><button class="secondary" data-demo="La respuesta es una simulación de interfaz. No se enviaron mensajes.">Guardar nota</button><button class="danger" data-go="refunds">Evaluar reintegro</button></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="page-refunds" class="page">
+          <div class="hero"><div><h2>Créditos y reintegros</h2><p>Controlá el historial de acreditaciones, consumos, paquetes comprados y solicitudes de devolución vinculadas a fotografías reportadas.</p></div><button class="primary" id="openRefund">Simular reintegro de crédito</button></div>
+          <div class="stats">
+            <div class="card stat"><div class="kicker">Créditos vendidos · mes</div><div class="value">5.200</div><div class="delta good">USD 1.300 · demostración</div></div>
+            <div class="card stat"><div class="kicker">Créditos consumidos</div><div class="value">3.948</div><div class="delta good">76% del volumen vendido</div></div>
+            <div class="card stat"><div class="kicker">Reintegros pendientes</div><div class="value" id="refundCount">5</div><div class="delta warn">1 crédito por caso promedio</div></div>
+            <div class="card stat"><div class="kicker">Tasa de reintegro</div><div class="value">2,4%</div><div class="delta warn">Medición ilustrativa</div></div>
+          </div>
+          <div class="card section">
+            <div class="workspace-title"><h3>Movimientos y solicitudes</h3><div class="filters"><select id="ledgerFilter" aria-label="Filtrar movimientos"><option value="all">Todos los movimientos</option><option value="refund">Reintegros</option><option value="purchase">Compras</option></select></div></div>
+            <div class="table-wrap" id="ledgerList">
+              <div class="ledger-row" data-kind="refund"><div><strong>#REP-1024 · Toyota Hilux</strong><div class="meta-sm">Nord Motors · Reporte de fidelidad</div></div><div><span class="pill warning">Pendiente</span></div><div><strong>+1 crédito</strong></div><div class="meta-sm">Hoy · 14:28</div><button class="ghost" id="rowRefund">Revisar</button></div>
+              <div class="ledger-row" data-kind="purchase"><div><strong>Pack 100 créditos</strong><div class="meta-sm">Capital Cars · Pago confirmado</div></div><div><span class="pill success">Acreditado</span></div><div><strong>+100</strong></div><div class="meta-sm">Hoy · 11:03</div><span class="meta-sm">Mercado Pago</span></div>
+              <div class="ledger-row" data-kind="refund"><div><strong>#REP-1008 · Volkswagen Amarok</strong><div class="meta-sm">AC Motors · Corrección no satisfactoria</div></div><div><span class="pill success">Resuelto</span></div><div><strong>+1 crédito</strong></div><div class="meta-sm">Ayer · 17:44</div><span class="meta-sm">Ajuste interno</span></div>
+              <div class="ledger-row" data-kind="purchase"><div><strong>Pack 300 créditos</strong><div class="meta-sm">Nord Motors · Pago confirmado</div></div><div><span class="pill success">Acreditado</span></div><div><strong>+300</strong></div><div class="meta-sm">Ayer · 09:18</div><span class="meta-sm">Mercado Pago</span></div>
+            </div>
+          </div>
+          <div class="footer-note">En este mockup los reintegros son movimientos de créditos internos, no devoluciones de dinero. Cualquier ajuste real requiere auditoría, autorización e idempotencia del backend.</div>
+        </section>
+
+        <section id="page-users" class="page">
+          <div class="hero"><div><h2>Usuarios y permisos</h2><p>Administrá usuarios registrados, organizaciones, bloqueos y permisos con separación estricta entre <code>super_admin</code> y <code>user</code>.</p></div><button class="ghost" data-demo="La invitación de usuarios requiere backend y correo; no se enviaron invitaciones.">Invitar usuario</button></div>
+          <div class="stats">
+            <div class="card stat"><div class="kicker">Usuarios totales</div><div class="value">94</div><div class="delta good">+12 este mes</div></div>
+            <div class="card stat"><div class="kicker">Clientes activos</div><div class="value">37</div><div class="delta good">Con actividad reciente</div></div>
+            <div class="card stat"><div class="kicker">Cuentas suspendidas</div><div class="value">2</div><div class="delta warn">Para verificar</div></div>
+            <div class="card stat"><div class="kicker">Super admins</div><div class="value">1</div><div class="delta good">Rol protegido</div></div>
+          </div>
+          <div class="card section"><div class="workspace-title"><h3>Directorio de usuarios</h3><div class="filters"><input placeholder="Buscar usuario o concesionaria" id="userSearch"></div></div>
+          <div class="table-wrap" id="usersTable">
+            <div class="user-row" data-search="mauro owner"><div class="user-cell"><span class="avatar">M</span><div><strong>Cuenta propietaria</strong><div class="meta-sm">Administración de AutoFrame AI</div></div></div><div><span class="pill info">super_admin</span></div><div class="meta-sm">Sin límite de demo</div><div><span class="pill success">Activo</span></div><button class="ghost" disabled title="Rol protegido">Protegido</button></div>
+            <div class="user-row" data-search="carolina nord motors"><div class="user-cell"><span class="avatar">C</span><div><strong>Carolina Díaz</strong><div class="meta-sm">Nord Motors</div></div></div><div><span class="pill info">user</span></div><div class="meta-sm">240 créditos</div><div><span class="pill success">Activo</span></div><button class="ghost" data-demo="Perfil de Carolina. En producción aquí se verían permisos y actividad.">Gestionar</button></div>
+            <div class="user-row" data-search="diego capital cars"><div class="user-cell"><span class="avatar">D</span><div><strong>Diego Pérez</strong><div class="meta-sm">Capital Cars</div></div></div><div><span class="pill info">user</span></div><div class="meta-sm">30 créditos</div><div><span class="pill success">Activo</span></div><button class="ghost" data-demo="Perfil de Diego. En producción aquí se verían permisos y actividad.">Gestionar</button></div>
+            <div class="user-row" data-search="lucia ac motors"><div class="user-cell"><span class="avatar">L</span><div><strong>Lucía Fernández</strong><div class="meta-sm">AC Motors</div></div></div><div><span class="pill info">user</span></div><div class="meta-sm">0 créditos</div><div><span class="pill warning">Pausado</span></div><button class="ghost" data-demo="Acción solo demostrativa; no se modifican cuentas.">Gestionar</button></div>
+          </div></div>
+          <div class="footer-note">Los roles se deben verificar en el servidor. El super_admin no puede otorgarse desde el frontend ni por elegir un email específico al registrarse con Google OAuth.</div>
+        </section>
+
+        <section id="page-experiments" class="page">
+          <div class="hero"><div><h2>Experiment history</h2><p>Historial de benchmarks ejecutados, decisiones tomadas y baselines activos.</p></div></div>
+          <div class="card section">
+            <div class="table">
+              <div class="row"><div><div class="title">showroom_v3_candidate · Hilux input set</div><div class="meta-sm">4 modelos · 1 referencia · ejecutado hoy</div></div><div><span class="pill success">Baseline updated</span></div><div class="meta-sm">USD 0.38</div><div class="meta-sm">Mejor: Sunburst</div><button class="ghost">Abrir</button></div>
+              <div class="row"><div><div class="title">motorcycle_v1 · Honda Wave</div><div class="meta-sm">3 modelos · evaluación de motos</div></div><div><span class="pill info">Archived</span></div><div class="meta-sm">USD 0.21</div><div class="meta-sm">Mejor: Flare</div><button class="ghost">Abrir</button></div>
+              <div class="row"><div><div class="title">plate_replace_test_02</div><div class="meta-sm">Comparación de blur vs overlay neutro</div></div><div><span class="pill warning">Needs review</span></div><div class="meta-sm">USD 0.12</div><div class="meta-sm">Pending</div><button class="ghost">Abrir</button></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="page-prompts" class="page">
+          <div class="hero"><div><h2>Prompt library</h2><p>Versionado de prompts base, reglas por categoría y perfiles de salida asociados.</p></div></div>
+          <div class="simple-grid">
+            <div class="card simple-card"><h4>automotive_showroom_v2</h4><p>Prompt principal para autos exteriores. Baseline activo. Compatible con Sunburst y Flare.</p></div>
+            <div class="card simple-card"><h4>motorcycle_showroom_v1</h4><p>Especializado en motos, preservando ruedas, carenados y postura del vehículo.</p></div>
+            <div class="card simple-card"><h4>interior_light_correction_v1</h4><p>Corrección de interiores y tableros sin reemplazo agresivo de entorno.</p></div>
+          </div>
+        </section>
+
+        <section id="page-gallery" class="page">
+          <div class="hero"><div><h2>Image gallery</h2><p>Explorá resultados generados, originales conservados y archivos con vencimiento cercano.</p></div></div>
+          <div class="card section"><p class="sub">Vista resumida del repositorio de imágenes. En la app real esta sección debería admitir filtros por organización, job, fecha y estado de retención.</p><div class="results-grid"><div class="result-card"><div class="result-img">Galería interna · lote Toyota Hilux</div></div><div class="result-card"><div class="result-img">Galería interna · BMW 320i</div></div></div></div>
+        </section>
+
+        <section id="page-orgs" class="page">
+          <div class="hero"><div><h2>Dealerships & users</h2><p>Organizaciones activas, usuarios registrados, consumo de créditos y configuraciones guardadas.</p></div></div>
+          <div class="card section"><div class="table"><div class="row"><div><div class="title">Nord Motors</div><div class="meta-sm">3 usuarios · 240 créditos disponibles · 2 referencias guardadas</div></div><div><span class="pill success">Active</span></div><div class="meta-sm">48 imágenes / mes</div><div class="meta-sm">Owner: Mauro Demo</div><button class="ghost">Ver</button></div><div class="row"><div><div class="title">Capital Cars</div><div class="meta-sm">1 usuario · 30 créditos disponibles · 1 reporte pendiente</div></div><div><span class="pill warning">Low balance</span></div><div class="meta-sm">12 imágenes / mes</div><div class="meta-sm">Owner: ventas@capitalcars.com</div><button class="ghost">Ver</button></div></div></div>
+        </section>
+
+        <section id="page-jobs" class="page">
+          <div class="hero"><div><h2>Jobs & errors</h2><p>Cola de procesamiento, reintentos, errores del worker y eventos operativos.</p></div></div>
+          <div class="card section"><div class="table"><div class="row"><div><div class="title">JOB-2041 · BMW 320i</div><div class="meta-sm">8 imágenes · Nord Motors</div></div><div><span class="pill info">Running</span></div><div class="meta-sm">75%</div><div class="meta-sm">worker-2</div><button class="ghost">Logs</button></div><div class="row"><div><div class="title">JOB-2030 · Ford Ranger</div><div class="meta-sm">1 imagen fallida en evaluación</div></div><div><span class="pill danger">Error</span></div><div class="meta-sm">retry 1/2</div><div class="meta-sm">fidelity evaluator</div><button class="ghost">Logs</button></div></div></div>
+        </section>
+
+        <section id="page-costs" class="page">
+          <div class="hero"><div><h2>Usage & costs</h2><p>Seguimiento de consumo por modelo, costo estimado, ingresos por créditos y márgenes preliminares.</p></div></div>
+          <div class="stats"><div class="card stat"><div class="kicker">OpenAI cost (month)</div><div class="value">$184</div><div class="delta good">Dentro del presupuesto</div></div><div class="card stat"><div class="kicker">Credits revenue</div><div class="value">$731</div><div class="delta good">Margen bruto saludable</div></div><div class="card stat"><div class="kicker">Avg cost / accepted img</div><div class="value">$0.07</div><div class="delta warn">Subió por reintentos</div></div><div class="card stat"><div class="kicker">Refund rate</div><div class="value">2.4%</div><div class="delta good">Bajo control</div></div></div>
+        </section>
+
+        <section id="page-settings" class="page">
+          <div class="hero"><div><h2>Settings</h2><p>Configuración global, proveedores, políticas de retención, límites de gasto y parámetros operativos.</p></div></div>
+          <div class="simple-grid"><div class="card simple-card"><h4>Auth & roles</h4><p>Google OAuth para usuarios y asignación segura del super_admin.</p></div><div class="card simple-card"><h4>Retention policy</h4><p>Archivos de trabajos: 30 días. Referencias guardadas: persistentes hasta borrado del usuario.</p></div><div class="card simple-card"><h4>Provider settings</h4><p>OpenAI activo. Estructura preparada para sumar nuevos proveedores y modelos.</p></div></div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div class="toast-stack" id="toastStack" role="status" aria-live="polite"></div>
+  <div class="modal-backdrop" id="refundModal" role="dialog" aria-modal="true" aria-label="Simular reintegro">
+    <div class="modal">
+      <h3>Simular reintegro</h3>
+      <p>El reintegro repondría créditos internos al usuario por una imagen defectuosa. Este prototipo no modifica ningún saldo real.</p>
+      <label class="detail-label" for="refundAmount">Créditos</label><select class="field" id="refundAmount"><option value="1">1 crédito</option><option value="2">2 créditos</option></select>
+      <div style="height:14px"></div><label class="detail-label" for="refundReason">Motivo</label>
+      <textarea class="field" id="refundReason" rows="3">La edición cambió características físicas del vehículo.</textarea>
+      <div class="actions"><button class="primary" id="confirmRefund">Simular aprobación</button><button class="ghost" id="closeRefund">Cancelar</button></div>
+    </div>
+  </div>
+  <script>
+    const NAV_ITEMS = [
+      ['overview','Overview',''],
+      ['review','Imágenes reportadas','12'],
+      ['studio','Correction Studio',''],
+      ['lab','Model Evaluation Lab',''],
+      ['experiments','Experiment History',''],
+      ['prompts','Prompt Library',''],
+      ['gallery','Image Gallery',''],
+      ['orgs','Concesionarias',''],
+      ['users','Usuarios y permisos',''],
+      ['refunds','Créditos y reintegros','5'],
+      ['jobs','Jobs & Errors','7'],
+      ['costs','Usage & Costs',''],
+      ['settings','Settings','']
+    ];
+
+    const sideNav = document.getElementById('sideNav');
+    const mobileNav = document.getElementById('mobileNav');
+    const mobileMenu = document.getElementById('mobileMenu');
+    const mobileToggle = document.getElementById('mobileToggle');
+
+    function renderNav(target){
+      NAV_ITEMS.forEach(([id,label,meta],idx)=>{
+        const btn=document.createElement('button');
+        btn.dataset.page=id;
+        if(idx===0) btn.classList.add('active');
+        btn.innerHTML=`<span>${label}</span>${meta?`<span class="meta">${meta}</span>`:''}`;
+        btn.addEventListener('click',()=>setPage(id));
+        target.appendChild(btn);
+      });
+    }
+    renderNav(sideNav); renderNav(mobileNav);
+
+    function setPage(id){
+      document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+      document.getElementById('page-'+id)?.classList.add('active');
+      document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active', b.dataset.page===id));
+      mobileMenu.classList.remove('open');
+      window.scrollTo({top:0,behavior:'smooth'});
+    }
+
+    document.querySelectorAll('[data-go]').forEach(btn=>btn.addEventListener('click',()=>setPage(btn.dataset.go)));
+    mobileToggle.addEventListener('click',()=>mobileMenu.classList.toggle('open'));
+    const reports={
+      1:{title:'Toyota Hilux 2019 · foto 04',client:'Nord Motors · ventas@nordmotors.com',reason:'Alteración de llantas y guardabarros.',suggestion:'Regenerar preservando las llantas originales.',prompt:'Preservar exactamente las llantas, neumáticos, guardabarros y línea de carrocería del vehículo original. No rediseñar ni estilizar piezas.',status:'pending'},
+      2:{title:'Volkswagen Amarok 2021 · foto 02',client:'AC Motors · soporte@acmotors.com',reason:'Logo de patente mal centrado.',suggestion:'Rehacer cobertura de patente con mejor alineación y sin alterar la unidad.',prompt:'Preservar el vehículo. Revisar ubicación de la patente y aplicar la cubierta sin distorsionar el paragolpes.',status:'inprogress'},
+      3:{title:'Ford Ranger 2018 · foto 06',client:'Capital Cars · ventas@capitalcars.com',reason:'Artefactos de sombras y piso.',suggestion:'Regenerar entorno y sombras sin modificar ruedas ni carrocería.',prompt:'Corregir la unión del piso y las sombras debajo de la rueda trasera. Preservar todas las piezas del vehículo.',status:'pending'},
+      4:{title:'BMW 320i 2020 · foto 01',client:'Nord Motors · administracion@nordmotors.com',reason:'Paragolpes delantero fue estilizado.',suggestion:'Mantener la pieza real y rechazar cambios de diseño exterior.',prompt:'No alterar la forma del paragolpes delantero; replicar fielmente el original.',status:'resolved'}
+    };
+    let selectedReport=1;
+    function selectReport(id){
+      selectedReport=Number(id);
+      const r=reports[selectedReport]; if(!r)return;
+      document.querySelectorAll('.queue-item').forEach(i=>i.classList.toggle('active',Number(i.dataset.select)===selectedReport));
+      document.querySelector('#page-review .detail-top h3').textContent=r.title;
+      document.querySelector('#page-review .detail-top small').textContent='Concesionaria: '+r.client+' · Reporte #REP-'+(1023+selectedReport);
+      document.getElementById('reportReason').textContent=r.reason;
+      document.getElementById('reportSuggestion').textContent=r.suggestion;
+      document.getElementById('reportCaption').textContent='Resultado reportado: '+r.reason;
+      document.querySelector('#page-review .detail textarea').value=r.prompt;
+      const statusText={pending:'Pendiente de revisión',inprogress:'En revisión',resolved:'Resuelto'};
+      const label=document.getElementById('reportStatusLabel');label.textContent=statusText[r.status];label.className='pill '+(r.status==='resolved'?'success':r.status==='inprogress'?'info':'warning');
+    }
+    document.querySelectorAll('.queue-item').forEach(item=>{
+      item.addEventListener('click',()=>selectReport(item.dataset.select));
+      item.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();selectReport(item.dataset.select)}});
+    });
+    function filterReports(status){
+      let first=null;
+      document.querySelectorAll('.queue-item').forEach(item=>{const show=reports[item.dataset.select].status===status;item.style.display=show?'block':'none';if(show&&!first)first=item});
+      if(first)selectReport(first.dataset.select);
+    }
+
+    document.querySelectorAll('#reviewTabs [data-tab]').forEach(btn=>btn.addEventListener('click',()=>{
+      document.querySelectorAll('#reviewTabs button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      filterReports(btn.dataset.tab);
+    }));
+
+    filterReports('pending');
+    // All scenes are offline, illustrated demo assets; never presented as real generated photos.
+    function carScene(mode='generated', id=1){
+      const outdoor=mode==='original';
+      const dark=mode==='candidate2';
+      const warn=mode==='generated';
+      const bg=outdoor?'#bfcfbe':dark?'#c6d1cb':'#e3ede8';
+      const floor=outdoor?'#838d80':dark?'#9caaa1':'#c8d6cc';
+      const sky=outdoor?'#e5e9e1':'#f7faf8';
+      const tire=warn?'#333b37':'#252e2b';
+      return `<svg class="art-svg" viewBox="0 0 640 410" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ilustración de vehículo ${outdoor?'original':'en showroom'} para el prototipo">
+      <defs>
+      <linearGradient id="bg${id}" x1="0" y1="0" x2="0" y2="1"><stop stop-color="${sky}"/><stop offset="1" stop-color="${bg}"/></linearGradient>
+      <linearGradient id="body${id}" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset=".5" stop-color="#e2e8e5"/><stop offset="1" stop-color="#9caeaa"/></linearGradient>
+      <linearGradient id="glass${id}" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#607e80"/><stop offset="1" stop-color="#1e3438"/></linearGradient>
+      <filter id="shadow${id}" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="10"/></filter>
+      </defs>
+      <rect width="640" height="410" fill="url(#bg${id})"/>
+      ${outdoor?`<g opacity=".5"><rect x="0" y="155" width="640" height="95" fill="#b3bdaf"/><rect x="15" y="130" width="85" height="116" rx="3" fill="#8f9a8a"/><rect x="120" y="110" width="135" height="133" fill="#abb8a8"/><rect x="425" y="133" width="178" height="111" fill="#a2ada1"/><path d="M0 217L640 215" stroke="#f2f3ec" stroke-width="8"/></g>`:`<g opacity=".75"><rect x="12" y="16" width="616" height="209" rx="16" fill="#e8f0eb"/><path d="M50 16v210M209 16v210M430 16v210M591 16v210" stroke="#c7d7cc" stroke-width="10"/><path d="M28 54H615M27 211H615" stroke="#fff" stroke-width="10"/></g>`}
+      <rect y="245" width="640" height="165" fill="${floor}"/><path d="M0 310L640 265M0 377L640 282" stroke="#f9fcf9" stroke-width="2" opacity=".35"/>
+      <ellipse cx="318" cy="334" rx="228" ry="29" fill="#243e34" opacity=".28" filter="url(#shadow${id})"/>
+      <path d="M100 280L134 238L205 207L385 190L458 221L536 254L558 285L536 313L483 320L444 298L215 316L173 333L118 319Z" fill="url(#body${id})" stroke="#819a95" stroke-width="4"/>
+      <path d="M211 208L257 165L379 162L452 219L394 222Z" fill="#d7e1dc" stroke="#80938d" stroke-width="3"/>
+      <path d="M258 174L375 171L424 213L213 211Z" fill="url(#glass${id})"/>
+      <path d="M321 172L322 213" stroke="#dce8e4" stroke-width="6"/>
+      <path d="M185 238L410 227L505 265" fill="none" stroke="#fbfffd" stroke-width="6" opacity=".6"/>
+      <path d="M218 258L198 308M405 242L435 293" fill="none" stroke="#91a5a0" stroke-width="3"/>
+      <path d="M461 229L512 250L509 265L468 259" fill="#e6f1ed" stroke="#9cb0aa" stroke-width="3"/>
+      <path d="M112 278L155 265L154 287L108 297Z" fill="#dbe5e5" stroke="#839c9c" stroke-width="3"/>
+      <path d="M516 278L556 284L544 297L515 293Z" fill="#303b3a"/>
+      <g><circle cx="191" cy="321" r="47" fill="${tire}"/><circle cx="191" cy="321" r="33" fill="#bdc8c4" stroke="#6a807b" stroke-width="4"/><circle cx="191" cy="321" r="15" fill="#627870"/>${warn?`<path d="M170 298l34 45M209 300l-33 43M191 289v65" stroke="#e6f6ef" stroke-width="6"/>`:`<path d="M171 302l39 39M212 302l-39 39M191 291v60M161 321h60" stroke="#dce8e3" stroke-width="4"/>`}</g>
+      <g><circle cx="470" cy="307" r="44" fill="#252e2b"/><circle cx="470" cy="307" r="31" fill="#bdc8c4" stroke="#6a807b" stroke-width="4"/><circle cx="470" cy="307" r="13" fill="#627870"/><path d="M452 290l36 34M488 290l-36 34M470 278v58M442 307h56" stroke="#e0eee7" stroke-width="4"/></g>
+      <rect x="337" y="261" width="57" height="7" rx="3" fill="#849993"/>
+      <path d="M109 304L145 313" stroke="#a4b5b0" stroke-width="7" stroke-linecap="round"/>
+      <text x="19" y="388" fill="${outdoor?'#e8efe8':'#587064'}" font-size="13" font-family="Arial, sans-serif" font-weight="700">AutoFrame AI · Ilustración demo</text>
+      </svg>`;
+    }
+    let sceneId = 0;
+    document.querySelectorAll('[data-scene]').forEach(el=>{el.innerHTML=carScene(el.dataset.scene,++sceneId)});
+    document.querySelectorAll('.image-card .ph').forEach((el,idx)=>{el.innerHTML=carScene(idx%2===0?'original':'generated',++sceneId)});
+    document.querySelectorAll('.result-img').forEach((el,idx)=>{el.innerHTML=carScene(idx===0?'candidate':idx===1?'generated':'candidate2',++sceneId)});
+    const compareRange=document.getElementById('compareRange');
+    function updateCompare(v){const compare=document.getElementById('studioCompare');compare.querySelector('.scene.after').style.clipPath=`inset(0 0 0 ${v}%)`;compare.querySelector('.divider-marker').style.left=v+'%';compare.querySelector('.handle').style.left=v+'%';}
+    compareRange.addEventListener('input',e=>updateCompare(e.target.value));
+    updateCompare(50);
+    function toast(message){const el=document.createElement('div');el.className='toast';el.textContent=message;document.getElementById('toastStack').appendChild(el);setTimeout(()=>el.remove(),3900)}
+    document.querySelectorAll('[data-demo]').forEach(b=>b.addEventListener('click',()=>toast(b.dataset.demo)));
+    document.querySelectorAll('#variants .variant').forEach(v=>{const select=()=>{document.querySelectorAll('#variants .variant').forEach(e=>e.classList.remove('active'));v.classList.add('active');toast('Variante '+(Number(v.dataset.variant)+1)+' seleccionada · demostración')};v.addEventListener('click',select);v.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();select()}})});
+    document.getElementById('simulateCorrection').addEventListener('click',()=>toast('Simulación: se enviaría el prompt a OpenAI previa confirmación del gasto. No se hizo ninguna llamada.'));
+    document.getElementById('newVariant').addEventListener('click',()=>toast('Se prepararía una nueva variante de imagen. Sin llamadas reales en este mockup.'));
+    document.getElementById('userSearch').addEventListener('input',e=>{const val=e.target.value.toLowerCase();document.querySelectorAll('#usersTable [data-search]').forEach(row=>row.style.display=row.dataset.search.includes(val)?'grid':'none')});
+    document.getElementById('ledgerFilter').addEventListener('change',e=>{const val=e.target.value;document.querySelectorAll('#ledgerList [data-kind]').forEach(row=>row.style.display=val==='all'||row.dataset.kind===val?'grid':'none')});
+    document.getElementById('markInReview').addEventListener('click',()=>{reports[selectedReport].status='inprogress';document.querySelector(`.queue-item[data-select="${selectedReport}"]`).dataset.status='inprogress';selectReport(selectedReport);toast('Caso marcado en revisión (sesión demo)')});
+    document.getElementById('closeReport').addEventListener('click',()=>{reports[selectedReport].status='resolved';document.querySelector(`.queue-item[data-select="${selectedReport}"]`).dataset.status='resolved';selectReport(selectedReport);toast('Caso cerrado (sesión demo)')});
+    for(const [id,label] of [['labOriginal','labOriginalName'],['labReference','labReferenceName']]){
+      document.getElementById(id).addEventListener('change',e=>{const file=e.target.files?.[0];if(file){document.getElementById(label).textContent=file.name;toast('Archivo cargado localmente para la demo; no se envió a ningún servidor.')}});
+    }
+    const modal=document.getElementById('refundModal');
+    function openRefund(){modal.classList.add('open');document.getElementById('refundReason').focus()}
+    function closeRefund(){modal.classList.remove('open')}
+    document.getElementById('openRefund').addEventListener('click',openRefund);
+    document.getElementById('rowRefund').addEventListener('click',openRefund);
+    document.getElementById('closeRefund').addEventListener('click',closeRefund);
+    modal.addEventListener('click',e=>{if(e.target===modal)closeRefund()});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape')closeRefund()});
+    document.getElementById('confirmRefund').addEventListener('click',()=>{const amount=document.getElementById('refundAmount').value;toast(`Demostración: reintegro de ${amount} crédito(s) preparado. No se alteraron saldos reales.`);closeRefund()});
+    document.querySelectorAll('.model-options .toggle').forEach(item=>item.addEventListener('click',()=>{item.classList.toggle('active');item.setAttribute('aria-pressed',item.classList.contains('active'))}));
+    document.querySelectorAll('#page-lab .primary').forEach(btn=>{if(btn.textContent.trim()==='Run comparison'||btn.textContent.trim()==='Start benchmark')btn.addEventListener('click',()=>toast('Benchmark de demostración: no se hicieron llamadas facturables a OpenAI.'))});
+    document.querySelectorAll('.result-actions button').forEach(btn=>btn.addEventListener('click',()=>toast('Acción de laboratorio simulada. La integración real conservará baseline, costos y versiones.')));
+
+  </script>
+</body>
+</html>

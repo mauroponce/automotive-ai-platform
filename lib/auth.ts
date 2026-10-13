@@ -1,6 +1,10 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
+import type { Provider } from "next-auth/providers/index";
 import type { NextAuthOptions } from "next-auth";
 import { db } from "@/lib/db";
-export const authOptions: NextAuthOptions={adapter:PrismaAdapter(db),session:{strategy:"database"},providers:[CredentialsProvider({name:"Email and password",credentials:{email:{label:"Email",type:"email"},password:{label:"Password",type:"password"}},async authorize(credentials){if(!credentials?.email||!credentials.password)return null;const user=await db.user.findUnique({where:{email:credentials.email}});if(!user?.passwordHash||!await bcrypt.compare(credentials.password,user.passwordHash))return null;return {id:user.id,email:user.email,name:user.name};}})],pages:{signIn:"/login"}};
+const providers:Provider[]=[CredentialsProvider({name:"Email and password",credentials:{email:{label:"Email",type:"email"},password:{label:"Password",type:"password"}},async authorize(credentials){if(!credentials?.email||!credentials.password)return null;const user=await db.user.findUnique({where:{email:credentials.email}});if(!user?.passwordHash||!await bcrypt.compare(credentials.password,user.passwordHash))return null;return {id:user.id,email:user.email,name:user.name};}})];
+if(process.env.GOOGLE_CLIENT_ID&&process.env.GOOGLE_CLIENT_SECRET)providers.push(GoogleProvider({clientId:process.env.GOOGLE_CLIENT_ID,clientSecret:process.env.GOOGLE_CLIENT_SECRET}));
+export const authOptions: NextAuthOptions={adapter:PrismaAdapter(db),session:{strategy:"database"},providers,pages:{signIn:"/login"},callbacks:{async signIn({user,account}){if(account?.provider==="google"&&!user.email)return false;return true;}}};

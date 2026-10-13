@@ -1,0 +1,10 @@
+export type VehicleType="car"|"motorcycle"|"suv"|"truck"|"van"|"unknown";
+export type TaskType="background_replacement"|"commercial_enhancement"|"plate_anonymization"|"mixed";
+export type ShotType="front"|"front_three_quarter"|"side"|"rear_three_quarter"|"rear"|"partial_or_unusual"|"unknown";
+export type CropType="full_vehicle"|"partially_cropped"|"detail"|"unknown";
+export type PlateAction="preserve"|"blur"|"neutral_cover"|"realistic_anonymize"|"not_visible";
+export type BackgroundMode="reference_showroom"|"preserve_existing"|"commercial_neutral";
+export type OutputGoal="dealership_listing"|"premium_listing"|"faithful_record";
+export type QualityIssue="low_light"|"distracting_background"|"underexposed"|"minor_noise"|"none";
+export type GenerationContext={vehicleType:VehicleType;vehicleSubtype?:string;task:TaskType;shotType:ShotType;cropType:CropType;visibleWheels:"none"|"one"|"two"|"multiple"|"unknown";backgroundMode:BackgroundMode;hasReferenceBackground:boolean;plateVisibility:"visible"|"not_visible"|"unknown";plateAction:PlateAction;outputGoal:OutputGoal;realismPriority:"standard"|"high";fidelityPriority:"high"|"maximum";qualityIssues:QualityIssue[];vehicleOccupancy:"small"|"balanced"|"dominant"|"unknown";userInstructions?:string;analysisSource:"user"|"vision"|"fallback"};
+export type PromptBuild={prompt:string;blocks:Record<string,string>;context:GenerationContext;warnings:string[]};
