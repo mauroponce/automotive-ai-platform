@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrganizationRole {
+  OWNER
+  DEALERSHIP_ADMIN
+  DEALERSHIP_STAFF
+}
+enum AssetKind {
+  VEHICLE
+  SHOWROOM
+  LOGO
+  GENERATED
+  EVALUATION_ARTIFACT
+}
+enum JobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELED
+  NEEDS_REVIEW
+}
+
+model User {
+  id String @id @default(cuid())
+  name String?
+  email String? @unique
+  emailVerified DateTime?
+  image String?
+  passwordHash String?
+  accounts Account[]
+  sessions Session[]
+  memberships Membership[]
+}
+model Account {
+  id String @id @default(cuid())
+  userId String
+  type String
+  provider String
+  providerAccountId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+}
+model Session {
+  id String @id @default(cuid())
+  sessionToken String @unique
+  userId String
+  expires DateTime
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+model VerificationToken {
+  identifier String
+  token String @unique
+  expires DateTime
+  @@unique([identifier, token])
+}
+model Organization {
+  id String @id @default(cuid())
+  name String
+  memberships Membership[]
+  assets Asset[]
+  jobs GenerationJob[]
+}
+model Membership {
+  organizationId String
+  userId String
+  role OrganizationRole
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([organizationId, userId])
+}
+model Asset {
+  id String @id @default(cuid())
+  organizationId String
+  kind AssetKind
+  objectKey String @unique
+  contentType String
+  byteSize Int
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+model PromptTemplate {
+  id String @id @default(cuid())
+  name String @unique
+  description String?
+  versions PromptVersion[]
+}
+model PromptVersion {
+  id String @id @default(cuid())
+  promptTemplateId String
+  version Int
+  promptText String
+  template PromptTemplate @relation(fields: [promptTemplateId], references: [id], onDelete: Cascade)
+  jobs GenerationJob[]
+  @@unique([promptTemplateId, version])
+}
+model ModelRegistry {
+  id String @id @default(cuid())
+  modelIdentifier String @unique
+}
+model GenerationJob {
+  id String @id @default(cuid())
+  organizationId String
+  promptVersionId String
+  status JobStatus @default(QUEUED)
+  requestedSettings Json
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  promptVersion PromptVersion @relation(fields: [promptVersionId], references: [id])
+  attempts GenerationAttempt[]
+}
+model GenerationAttempt {
+  id String @id @default(cuid())
+  jobId String
+  provider String
+  modelIdentifier String
+  status JobStatus
+  errorMessage String?
+  job GenerationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+}

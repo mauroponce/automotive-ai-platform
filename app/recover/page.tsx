@@ -1,0 +1,1 @@
+export default function Recover(){return <main className="shell" style={{maxWidth:480}}><div className="card"><h1>Recover password</h1><label className="field">Email<input type="email"/></label><button className="button">Send recovery link</button></div></main>}

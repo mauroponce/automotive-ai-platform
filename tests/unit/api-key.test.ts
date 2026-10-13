@@ -1,0 +1,2 @@
+import { beforeEach, describe, expect, it } from "vitest"; import { hashApiKey, verifyApiKey } from "@/lib/services/api-key";
+describe("API key verification",()=>{beforeEach(()=>{process.env.API_KEY_PEPPER="test-pepper"});it("verifies only the matching key",()=>{const hash=hashApiKey("ak_live_secret");expect(verifyApiKey("ak_live_secret",hash)).toBe(true);expect(verifyApiKey("wrong",hash)).toBe(false)})});

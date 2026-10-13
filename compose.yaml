@@ -1,0 +1,28 @@
+services:
+  web:
+    build: { context: ., target: development }
+    command: npm run dev -- --hostname 0.0.0.0
+    ports: ["3000:3000"]
+    env_file: .env.local
+    volumes: [".:/app", "web_node_modules:/app/node_modules"]
+    depends_on: { postgres: { condition: service_healthy }, minio: { condition: service_healthy } }
+    healthcheck: { test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"], interval: 10s, timeout: 5s, retries: 12 }
+  worker:
+    build: { context: ., target: development }
+    command: npm run worker
+    env_file: .env.local
+    volumes: [".:/app", "worker_node_modules:/app/node_modules"]
+    depends_on: { postgres: { condition: service_healthy }, minio: { condition: service_healthy } }
+  postgres:
+    image: postgres:16-alpine
+    environment: { POSTGRES_DB: automotive, POSTGRES_USER: automotive, POSTGRES_PASSWORD: automotive_local_only }
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U automotive -d automotive"], interval: 5s, timeout: 5s, retries: 12 }
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address :9001
+    environment: { MINIO_ROOT_USER: minioadmin, MINIO_ROOT_PASSWORD: minioadminchange }
+    ports: ["9000:9000", "9001:9001"]
+    volumes: ["minio_data:/data"]
+    healthcheck: { test: ["CMD", "mc", "ready", "local"], interval: 10s, timeout: 5s, retries: 12 }
+volumes: { postgres_data: {}, minio_data: {}, web_node_modules: {}, worker_node_modules: {} }

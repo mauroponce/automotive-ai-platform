@@ -1,0 +1,16 @@
+node_modules
+.next
+.env.local
+.env
+.env.*
+!.env.example
+!.env.production.example
+/backups/
+*.dump
+*.dump.sha256
+*.sql.gz
+*.backup
+/restic-password*
+test-results
+playwright-report
+*.tsbuildinfo

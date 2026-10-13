@@ -1,0 +1,1 @@
+import { test, expect } from "@playwright/test"; test("opens the evaluation lab",async({page})=>{await page.goto("/");await page.getByText("Model Evaluation Lab").click();await expect(page.getByRole("heading",{name:"Model Evaluation Lab"})).toBeVisible();});

@@ -1,0 +1,3 @@
+import { describe, expect, it } from "vitest"; import { createJob } from "@/lib/services/jobs";
+const payload={vehicleAssetId:"7fc8f1d1-1572-45a2-b4b5-a5230e77ff2a",showroomAssetId:"7a20366f-6cc3-47e0-8df0-8bb7a98db462",promptVersionId:"b3815cd0-e0bd-4f18-87fd-fd0122e70a74",model:"gpt-image-2",idempotencyKey:"the-same-strong-idempotency-key"};
+describe("job creation",()=>{it("returns the same job for the same key",()=>{expect(createJob(payload).id).toBe(createJob(payload).id)});it("rejects a disabled model",()=>expect(()=>createJob({...payload,model:"other"})).toThrow());});
