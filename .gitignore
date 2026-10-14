@@ -12,5 +12,8 @@ node_modules
 *.backup
 /restic-password*
 test-results
+/data/
 playwright-report
 *.tsbuildinfo
+__pycache__/
+*.pyc

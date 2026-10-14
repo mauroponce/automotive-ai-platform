@@ -18,8 +18,12 @@ npm ci
 npm run typecheck && npm run lint && npm test && npm run build
 ```
 
-The local stack exposes the app at http://localhost:3000, PostgreSQL only on its internal Docker network, MinIO's S3 API at http://localhost:9000, and MinIO Console at http://localhost:9001. Default local MinIO credentials are documented in `.env.example`; change them outside development.
+The default local stack exposes the app at http://localhost:3000 and PostgreSQL only on its internal Docker network. Basic V1 stores its private image files under `data/basic-edit/` on the local machine and makes no OpenAI or S3 request. The local detector is an evaluation-only aid; every suggested plate region must be reviewed manually.
+
+MinIO and the background worker are reserved for object-storage and asynchronous flows: `docker compose --profile object-storage --profile workers up --build`. Default local MinIO credentials are documented in `.env.example`; change them outside development.
 
 Run database migrations with `docker compose exec web npm run db:migrate` and seed the prompt/model registry with `docker compose exec web npx tsx prisma/seed.ts`.
 
 See `docs/hetzner-deployment.md` for Hetzner, `docs/openai-setup.md` for explicit paid inference authorization, and `docs/api-contract.md` for the API.
+
+For the local Basic V1 plate-blur workflow, see `docs/local-basic-plate-blur.md`.

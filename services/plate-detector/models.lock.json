@@ -1,8 +1,0 @@
-{
-  "models": [
-    {"id":"yolo-v9-t-384-license-plate-end2end","filename":"yolo-v9-t-384-license-plates-end2end.onnx","inputSize":384,"sha256":"888397b96d761c89db40bc9c305838e8652660f5e282c2cadebbe8d2951a77a8","status":"evaluation_only"},
-    {"id":"yolo-v9-t-512-license-plate-end2end","filename":"yolo-v9-t-512-license-plates-end2end.onnx","inputSize":512,"sha256":"746fdd358ec110418775d7c9d8d07910d48b1a21471f92bf4421f6510d6daade","status":"evaluation_only"},
-    {"id":"yolo-v9-t-640-license-plate-end2end","filename":"yolo-v9-t-640-license-plates-end2end.onnx","inputSize":640,"sha256":"c3c1026ca7d0585dd88084d68182dd897113712fa734ae1557ca70174440c076","status":"evaluation_only"},
-    {"id":"yolo-v9-s-608-license-plate-end2end","filename":"yolo-v9-s-608-license-plates-end2end.onnx","inputSize":608,"sha256":"2b878b38d9aa07b6ddc3ea75c4ffcb39869bc5c218e0a14002f60ab2f7b0be9a","status":"evaluation_only"}
-  ]
-}

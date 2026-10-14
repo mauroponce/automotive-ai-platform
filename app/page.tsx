@@ -1,2 +1,5 @@
-import { redirect } from "next/navigation";
-export default function Home(){redirect("/portal")}
+import { MotorframeLanding } from "@/components/landing/motorframe-landing";
+
+export default function Home() {
+  return <MotorframeLanding />;
+}

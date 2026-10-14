@@ -14,8 +14,8 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:push": "prisma db push",
-    "worker": "tsx worker/index.ts"
-    ,"auth:promote-super-admin": "tsx scripts/promote-super-admin.ts"
+    "worker": "tsx worker/index.ts",
+    "auth:promote-super-admin": "tsx scripts/promote-super-admin.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
@@ -27,6 +27,7 @@
     "lucide-react": "^1.56.0",
     "next": "^16.4.0",
     "next-auth": "^4.24.15",
+    "onnxruntime-web": "^1.30.0",
     "openai": "^7.32.0",
     "pg-boss": "^12.38.0",
     "react": "^19.2.0",

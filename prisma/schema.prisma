@@ -31,6 +31,33 @@ enum JobStatus {
   CANCELED
   NEEDS_REVIEW
 }
+enum VehicleProcessingBatchStatus {
+  DRAFT
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELED
+}
+enum VehicleProcessingItemStatus {
+  QUEUED
+  SUBMITTED
+  PROCESSING
+  NEEDS_REVIEW
+  APPROVED
+  REJECTED
+  FAILED
+}
+enum VehicleBackgroundSource {
+  PLATFORM_PRESET
+  ORGANIZATION_ASSET
+  BATCH_UPLOAD
+}
+enum VehiclePlateTreatment {
+  BLUR
+  HIDE
+  REGISTERED_TEMPLATE
+}
 enum PlateLabExperimentStatus {
   DRAFT
   QUEUED
@@ -43,6 +70,13 @@ enum PlateLabAnnotationState {
   PENDING
   ANNOTATED
   NO_VISIBLE_PLATE
+}
+enum ShowroomLabExperimentStatus {
+  DRAFT
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
 }
 
 model User {
@@ -58,6 +92,64 @@ model User {
   sessions Session[]
   memberships Membership[]
   plateLabExperiments PlateLabExperiment[] @relation("PlateLabExperimentOwner")
+  showroomLabExperiments ShowroomLabExperiment[] @relation("ShowroomLabExperimentOwner")
+}
+model ShowroomLabExperiment {
+  id String @id @default(cuid())
+  ownerId String
+  status ShowroomLabExperimentStatus @default(DRAFT)
+  configuration Json
+  startedAt DateTime?
+  completedAt DateTime?
+  errorMessage String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  owner User @relation("ShowroomLabExperimentOwner", fields:[ownerId], references:[id], onDelete: Cascade)
+  images ShowroomLabImage[]
+  backgrounds ShowroomLabBackground[]
+}
+model ShowroomLabImage {
+  id String @id @default(cuid())
+  experimentId String
+  originalName String
+  artifactKey String @unique
+  contentType String
+  byteSize Int
+  width Int
+  height Int
+  errorMessage String?
+  createdAt DateTime @default(now())
+  experiment ShowroomLabExperiment @relation(fields:[experimentId], references:[id], onDelete: Cascade)
+  runs ShowroomLabRun[]
+}
+model ShowroomLabBackground {
+  id String @id @default(cuid())
+  experimentId String
+  originalName String
+  artifactKey String @unique
+  contentType String
+  byteSize Int
+  width Int
+  height Int
+  createdAt DateTime @default(now())
+  experiment ShowroomLabExperiment @relation(fields:[experimentId], references:[id], onDelete: Cascade)
+  runs ShowroomLabRun[]
+}
+model ShowroomLabRun {
+  id String @id @default(cuid())
+  imageId String
+  backgroundId String
+  modelId String
+  maskArtifactKey String @unique
+  outputArtifactKey String @unique
+  preprocessingMs Int
+  inferenceMs Int
+  postprocessingMs Int
+  warnings Json
+  createdAt DateTime @default(now())
+  image ShowroomLabImage @relation(fields:[imageId], references:[id], onDelete: Cascade)
+  background ShowroomLabBackground @relation(fields:[backgroundId], references:[id], onDelete: Cascade)
+  @@unique([imageId, backgroundId, modelId])
 }
 model PlateLabExperiment {
   id String @id @default(cuid())
@@ -177,6 +269,9 @@ model Organization {
   memberships Membership[]
   assets Asset[]
   jobs GenerationJob[]
+  vehicleProcessingBatches VehicleProcessingBatch[]
+  pilotEntitlement PilotOrganizationEntitlement?
+  registeredPlateTemplates RegisteredPlateTemplate[]
 }
 model Membership {
   organizationId String
@@ -194,6 +289,76 @@ model Asset {
   contentType String
   byteSize Int
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  batchSourceItems VehicleProcessingItem[] @relation("VehicleBatchSourceAsset")
+  batchOutputItems VehicleProcessingItem[] @relation("VehicleBatchOutputAsset")
+  batchBackgrounds VehicleProcessingBatch[] @relation("VehicleBatchBackgroundAsset")
+  plateTemplate RegisteredPlateTemplate?
+}
+model PilotOrganizationEntitlement {
+  organizationId String @id
+  grantedVehicleBatches Int @default(0)
+  reservedVehicleBatches Int @default(0)
+  consumedVehicleBatches Int @default(0)
+  updatedAt DateTime @updatedAt
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+model RegisteredPlateTemplate {
+  id String @id @default(cuid())
+  organizationId String
+  assetId String @unique
+  name String
+  createdAt DateTime @default(now())
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+}
+model VehicleProcessingBatch {
+  id String @id @default(cuid())
+  organizationId String
+  vehicleLabel String
+  status VehicleProcessingBatchStatus @default(DRAFT)
+  idempotencyKey String
+  backgroundSource VehicleBackgroundSource
+  backgroundAssetId String?
+  backgroundSnapshot Json
+  plateTreatment VehiclePlateTreatment
+  plateTemplateId String?
+  configuration Json
+  providerBatchId String? @unique
+  providerInputFileId String?
+  actualProviderCostUsd Float @default(0)
+  nonProviderCostUsd Float @default(0)
+  entitlementReservedAt DateTime?
+  entitlementConsumedAt DateTime?
+  startedAt DateTime?
+  completedAt DateTime?
+  errorMessage String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  backgroundAsset Asset? @relation("VehicleBatchBackgroundAsset", fields: [backgroundAssetId], references: [id])
+  items VehicleProcessingItem[]
+  @@unique([organizationId, idempotencyKey])
+}
+model VehicleProcessingItem {
+  id String @id @default(cuid())
+  batchId String
+  sourceAssetId String
+  outputAssetId String? @unique
+  status VehicleProcessingItemStatus @default(QUEUED)
+  providerCustomId String @unique
+  providerRequestId String?
+  promptSnapshot String
+  usage Json?
+  providerCostUsd Float?
+  evaluation Json?
+  errorMessage String?
+  approvedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  batch VehicleProcessingBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  sourceAsset Asset @relation("VehicleBatchSourceAsset", fields: [sourceAssetId], references: [id])
+  outputAsset Asset? @relation("VehicleBatchOutputAsset", fields: [outputAssetId], references: [id])
+  @@unique([batchId, sourceAssetId])
 }
 model PromptTemplate {
   id String @id @default(cuid())

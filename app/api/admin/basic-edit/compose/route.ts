@@ -1,0 +1,11 @@
+import { readFile } from "node:fs/promises";
+import sharp from "sharp";
+import { z } from "zod";
+import { AuthorizationError, requireSuperAdmin } from "@/lib/authorization";
+import { composeVehicle } from "@/lib/local-showroom/composition";
+import { getShowroomPreset, presetPath } from "@/lib/local-showroom/presets";
+import { obfuscatePlates } from "@/lib/plate-lab/obfuscation";
+import { normalizedBoxSchema } from "@/lib/plate-lab/models";
+
+const settingsSchema = z.object({ presetId: z.string(), plate: z.object({ box: normalizedBoxSchema, method: z.enum(["blur", "cover"]) }).optional() });
+export async function POST(request: Request) { try { await requireSuperAdmin(); const form = await request.formData(); const image = form.get("image"), mask = form.get("mask"); if (!(image instanceof File) || !(mask instanceof File) || image.size > 20_000_000 || mask.size > 20_000_000) throw new Error("Image and mask are required."); const settings = settingsSchema.parse(JSON.parse(z.string().parse(form.get("settings")))); const preset = getShowroomPreset(settings.presetId); let source = Buffer.from(await image.arrayBuffer()); if (settings.plate) source = (await obfuscatePlates(source, [settings.plate.box], { method: settings.plate.method, intensity: "strong", marginPercent: 8, coverColor: "black" })).buffer; const background = await readFile(presetPath(preset.id)); const metadata = await sharp(background).metadata(); if (!metadata.width || !metadata.height) throw new Error("Invalid showroom preset."); const output = await composeVehicle(source, Buffer.from(await mask.arrayBuffer()), background, { shadowEnabled: true, shadowIntensity: preset.shadowIntensity, supportY: Math.round(metadata.height * preset.supportY), centerX: Math.round(metadata.width * preset.centerX), maxWidth: Math.round(metadata.width * preset.maxWidth) }); return new Response(output, { headers: { "content-type": "image/png", "content-disposition": "attachment; filename=basic-edit.png", "cache-control": "no-store" } }); } catch (error) { if (error instanceof AuthorizationError) return Response.json({ error: { code: "forbidden", message: "Super admin access required" } }, { status: 403 }); return Response.json({ error: { code: "compose_failed", message: error instanceof Error ? error.message : "Unable to compose image" } }, { status: 400 }); } }

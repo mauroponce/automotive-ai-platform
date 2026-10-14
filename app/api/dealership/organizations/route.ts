@@ -1,0 +1,3 @@
+import { AuthorizationError, requirePortalUser } from "@/lib/authorization";
+import { db } from "@/lib/db";
+export async function GET() { try { const user = await requirePortalUser(); const memberships = await db.membership.findMany({ where: { userId: user.id }, include: { organization: true } }); return Response.json({ data: memberships.map(({ organization, role }) => ({ id: organization.id, name: organization.name, role })) }); } catch (error) { if (error instanceof AuthorizationError) return Response.json({ error: { code: "authentication_required", message: "Sign in to access dealerships." } }, { status: 401 }); throw error; } }

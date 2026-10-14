@@ -1,2 +1,3 @@
-import { EmptyState, PageHeader } from "@/components/portal-ui";
-export default function History(){return <><PageHeader eyebrow="History" title="Processing history" description="Jobs and their retention dates will appear here."/><EmptyState title="No processing history" description="Completed and interrupted jobs will be listed after you create your first batch."/></>}
+import { BatchReview } from "@/components/dealership-batch/batch-review";
+import { PageHeader } from "@/components/portal-ui";
+export default function History(){return <><PageHeader eyebrow="Dealership pilot" title="Batch review history" description="Preview every unverified provider result and approve only faithful vehicle photos."/><BatchReview/></>}

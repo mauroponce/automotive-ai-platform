@@ -1,0 +1,5 @@
+import { AuthorizationError, requireOrganizationMembership } from "@/lib/authorization";
+import { db } from "@/lib/db";
+import { queueVehicleProcessingBatch } from "@/lib/dealership-batch/service";
+import { enqueueVehicleBatchDispatch } from "@/lib/queue";
+export async function POST(_: Request, { params }: { params: Promise<{ id: string }> }) { try { const { id } = await params; const batch = await db.vehicleProcessingBatch.findUnique({ where: { id } }); if (!batch) return Response.json({ error: { code: "not_found", message: "Vehicle batch not found." } }, { status: 404 }); await requireOrganizationMembership(batch.organizationId); const updated = await queueVehicleProcessingBatch(id); await enqueueVehicleBatchDispatch(id); return Response.json({ data: updated }, { status: 202 }); } catch (error) { if (error instanceof AuthorizationError) return Response.json({ error: { code: "unauthorized", message: "Organization access is required." } }, { status: 401 }); return Response.json({ error: { code: "batch_start_failed", message: error instanceof Error ? error.message : "Unable to start batch." } }, { status: 400 }); } }
