@@ -2,9 +2,11 @@
 
 Create a Google Cloud OAuth 2.0 Web application. Add `http://localhost:3000/api/auth/callback/google` for local development and `https://YOUR_DOMAIN/api/auth/callback/google` for production as authorized redirect URIs. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXTAUTH_URL`, and a strong `NEXTAUTH_SECRET` outside Git, then restart `web`.
 
-New Google-authenticated users are created by Auth.js with the database default `USER` platform role. The OAuth profile, frontend requests, and registration endpoint cannot assign a role.
+Google is the only customer authentication method. AutoFrame rejects OAuth profiles whose email was not verified by Google. A new Google-authenticated user receives the database default `USER` platform role and completes registration by naming the dealership. The server then creates an owner membership and a 14-day organization trial; no password or credit card is collected. Existing users may be linked by their verified Google email, matching the explicit account-linking policy.
 
-After first signing in with Google, promote exactly one user from an administrative shell:
+Portal and organization API access require an active organization trial. At the exact `trialEndsAt` instant, access is paused and the user is sent to `/trial-expired`. Super administrators remain governed by the separate platform-role controls.
+
+After first signing up with Google, promote exactly one user from an administrative shell:
 
 ```bash
 CONFIRM_PROMOTE_SUPER_ADMIN=PROMOTE_SINGLE_SUPER_ADMIN \

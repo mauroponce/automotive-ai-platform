@@ -1,3 +1,31 @@
-import bcrypt from "bcryptjs"; import { z } from "zod"; import { db } from "@/lib/db";
-const schema=z.object({name:z.string().min(2).max(120),email:z.string().email(),password:z.string().min(12).max(128),organizationName:z.string().min(2).max(120)});
-export async function POST(request:Request){const input=schema.safeParse(await request.json());if(!input.success)return Response.json({error:{code:"validation_error",message:"Invalid registration details"}},{status:400});try{const passwordHash=await bcrypt.hash(input.data.password,12);const organization=await db.organization.create({data:{name:input.data.organizationName,memberships:{create:{role:"DEALERSHIP_ADMIN",user:{create:{name:input.data.name,email:input.data.email,passwordHash}}}}},include:{memberships:{include:{user:true}}}});return Response.json({data:{userId:organization.memberships[0].userId,organizationId:organization.id}},{status:201});}catch{return Response.json({error:{code:"email_in_use",message:"A user with this email already exists."}},{status:409});}}
+import { z } from "zod";
+import { currentPrincipal } from "@/lib/authorization";
+import { db } from "@/lib/db";
+import { trialEndsAt } from "@/lib/trial";
+
+const schema = z.object({ organizationName: z.string().trim().min(2).max(120) });
+
+export async function POST(request: Request) {
+  const user = await currentPrincipal();
+  if (!user) return Response.json({ error: { code: "authentication_required", message: "Sign up with Google first." } }, { status: 401 });
+  if (!user.accounts.some(({ provider }) => provider === "google")) return Response.json({ error: { code: "google_account_required", message: "A verified Google account is required." } }, { status: 403 });
+  if (user.memberships.length) return Response.json({ error: { code: "organization_exists", message: "This account already belongs to a dealership." } }, { status: 409 });
+
+  const input = schema.safeParse(await request.json().catch(() => null));
+  if (!input.success) return Response.json({ error: { code: "validation_error", message: "Enter a dealership name between 2 and 120 characters." } }, { status: 400 });
+
+  const trialStartedAt = new Date();
+  try {
+    const organization = await db.organization.create({
+      data: {
+        name: input.data.organizationName,
+        trialStartedAt,
+        trialEndsAt: trialEndsAt(trialStartedAt),
+        memberships: { create: { role: "OWNER", userId: user.id } },
+      },
+    });
+    return Response.json({ data: { organizationId: organization.id, trialEndsAt: organization.trialEndsAt } }, { status: 201 });
+  } catch {
+    return Response.json({ error: { code: "registration_conflict", message: "Unable to create this dealership workspace." } }, { status: 409 });
+  }
+}

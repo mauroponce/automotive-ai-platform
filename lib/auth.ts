@@ -1,10 +1,45 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import bcrypt from "bcryptjs";
-import CredentialsProvider from "next-auth/providers/credentials";
+import type { NextAuthOptions } from "next-auth";
+import { cookies } from "next/headers";
 import GoogleProvider from "next-auth/providers/google";
 import type { Provider } from "next-auth/providers/index";
-import type { NextAuthOptions } from "next-auth";
 import { db } from "@/lib/db";
-const providers:Provider[]=[CredentialsProvider({name:"Email and password",credentials:{email:{label:"Email",type:"email"},password:{label:"Password",type:"password"}},async authorize(credentials){if(!credentials?.email||!credentials.password)return null;const user=await db.user.findUnique({where:{email:credentials.email}});if(!user?.passwordHash||!await bcrypt.compare(credentials.password,user.passwordHash))return null;return {id:user.id,email:user.email,name:user.name};}})];
-if(process.env.GOOGLE_CLIENT_ID&&process.env.GOOGLE_CLIENT_SECRET)providers.push(GoogleProvider({clientId:process.env.GOOGLE_CLIENT_ID,clientSecret:process.env.GOOGLE_CLIENT_SECRET}));
-export const authOptions: NextAuthOptions={adapter:PrismaAdapter(db),session:{strategy:"jwt"},providers,pages:{signIn:"/login"},callbacks:{async signIn({user,account}){if(account?.provider==="google"&&!user.email)return false;return true;}}};
+
+const googleConfigured = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+const providers: Provider[] = [];
+
+if (googleConfigured) {
+  providers.push(GoogleProvider({
+    clientId: process.env.GOOGLE_CLIENT_ID!,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    // Google-verified email ownership is the explicit account-linking policy.
+    allowDangerousEmailAccountLinking: true,
+  }));
+}
+
+export const authOptions: NextAuthOptions = {
+  adapter: PrismaAdapter(db),
+  session: { strategy: "jwt" },
+  providers,
+  pages: { signIn: "/login", error: "/login" },
+  callbacks: {
+    async signIn({ user, account, profile }) {
+      if (account?.provider !== "google" || !user.email) return false;
+      if ((profile as { email_verified?: boolean } | undefined)?.email_verified !== true) return false;
+
+      const intent = (await cookies()).get("autoframe-auth-intent")?.value;
+      if (intent === "registration") return true;
+
+      const existingUser = await db.user.findFirst({
+        where: {
+          OR: [
+            { email: user.email },
+            { accounts: { some: { provider: "google", providerAccountId: account.providerAccountId } } },
+          ],
+        },
+        select: { id: true },
+      });
+      return Boolean(existingUser);
+    },
+  },
+};

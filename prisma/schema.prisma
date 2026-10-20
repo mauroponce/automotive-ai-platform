@@ -266,6 +266,8 @@ model VerificationToken {
 model Organization {
   id String @id @default(cuid())
   name String
+  trialStartedAt DateTime @default(now())
+  trialEndsAt DateTime
   memberships Membership[]
   assets Asset[]
   jobs GenerationJob[]

@@ -23,6 +23,7 @@ El producto debe ser fácil de usar desde celular, apto para lotes, accesible pa
 | Fidelidad y revisión | Metodología de evaluación separa realismo, fidelidad física, daños, ruedas, sombras, patentes y aptitud para marketplace. | Implementada como metodología; no es una garantía automática. |
 | Patentes | Laboratorio de superadministración para comparar detectores locales, métricas y blur/pixelado/cobertura deterministas. Los modelos YOLO actuales son sólo de evaluación. | En desarrollo/validación; no es aún edición básica comercial ni detector aprobado para producción. |
 | Portal y lotes | Hay UI inicial de portal, carga y resumen de lote; las pantallas declaran estados vacíos o procesamiento deshabilitado. | Base de experiencia, no flujo comercial operativo de punta a punta. |
+| Registro y prueba | Alta e inicio de sesión exclusivos con Google OAuth; cada organización recibe 14 días exactos de acceso al portal. No hay gracia ni reactivación automática porque los pagos aún no están implementados. | Implementado; requiere credenciales OAuth por entorno. |
 | Créditos y pagos | Existen pantallas de maqueta y lugares administrativos para créditos/reembolsos; no hay persistencia de movimientos ni proveedor de pagos configurado. | Pendiente. |
 | API pública | Hay contrato y endpoints base; el middleware de API key es requisito previo para exponerla comercialmente. | No disponible comercialmente. |
 

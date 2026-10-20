@@ -1,15 +1,28 @@
 "use client";
 
 import { Download, Image as ImageIcon, Menu, Minus, Move, Plus, ShieldCheck, Upload, ZoomIn } from "lucide-react";
+import pica from "pica";
 import { useEffect, useRef, useState } from "react";
 import { detectLicensePlatesInBrowser } from "@/lib/browser-plate-detector";
 
 type Region = { id: string; x: number; y: number; width: number; height: number; angle?: number };
 type Photo = { id: string; file: File; url: string; width: number; height: number; regions: Region[] };
 type View = { scale: number; x: number; y: number };
+type ExportProfile = { id: string; platform: string; name: string; width: number; height: number; quality: number };
 const images = ["suv-plata.webp", "sedan-grafito.webp", "crossover-azul.webp", "hatch-verde.webp", "pickup-blanca.webp"];
+const exportProfiles: ExportProfile[] = [
+  { id: "mercadolibre-landscape", platform: "Mercado Libre", name: "Vehicle listing", width: 1200, height: 900, quality: .9 },
+  { id: "mercadolibre-square", platform: "Mercado Libre", name: "Square listing", width: 1200, height: 1200, quality: .9 },
+  { id: "instagram-post", platform: "Instagram", name: "Post", width: 1080, height: 1350, quality: .88 },
+  { id: "instagram-square", platform: "Instagram", name: "Square post", width: 1080, height: 1080, quality: .88 },
+  { id: "instagram-story", platform: "Instagram", name: "Story", width: 1080, height: 1920, quality: .88 },
+  { id: "facebook-square", platform: "Facebook", name: "Post & Marketplace", width: 1080, height: 1080, quality: .88 },
+  { id: "facebook-feed", platform: "Facebook", name: "Feed", width: 1080, height: 1350, quality: .88 },
+  { id: "facebook-story", platform: "Facebook", name: "Story", width: 1080, height: 1920, quality: .88 },
+];
 const asset = (name: string) => `/motorframe/${name}`;
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+const imageResizer = pica({ features: ["js", "wasm", "ww"] });
 
 async function dimensions(url: string) { const image = new Image(); image.src = url; await image.decode(); return { width: image.naturalWidth, height: image.naturalHeight }; }
 async function blur(photo: Photo) {
@@ -65,6 +78,26 @@ async function blur(photo: Photo) {
   return URL.createObjectURL(blob);
 }
 
+async function resizeForExport(sourceUrl: string, profile: ExportProfile, cropToFill: boolean) {
+  const image = new Image();
+  image.src = sourceUrl;
+  await image.decode();
+  const scale = cropToFill ? Math.max(profile.width / image.naturalWidth, profile.height / image.naturalHeight) : Math.min(profile.width / image.naturalWidth, profile.height / image.naturalHeight);
+  const scaled = document.createElement("canvas");
+  scaled.width = Math.max(1, Math.round(image.naturalWidth * scale));
+  scaled.height = Math.max(1, Math.round(image.naturalHeight * scale));
+  await imageResizer.resize(image, scaled, { filter: "mks2013", unsharpAmount: 120, unsharpRadius: .6, unsharpThreshold: 2 });
+  const target = document.createElement("canvas");
+  target.width = profile.width;
+  target.height = profile.height;
+  const context = target.getContext("2d");
+  if (!context) throw new Error("Your browser could not prepare this export.");
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, target.width, target.height);
+  context.drawImage(scaled, Math.round((target.width - scaled.width) / 2), Math.round((target.height - scaled.height) / 2));
+  return imageResizer.toBlob(target, "image/jpeg", profile.quality);
+}
+
 export function Hero3DCarousel() { const [active, setActive] = useState(0); useEffect(() => { const timer = window.setInterval(() => setActive((i) => (i + 1) % images.length), 4300); return () => clearInterval(timer); }, []); return <div className="mf-carousel"><button onClick={() => setActive((active + images.length - 1) % images.length)} aria-label="Previous example">‹</button><div>{[-1, 0, 1].map((offset) => <img key={offset} className={`card-${offset}`} src={asset(images[(active + offset + images.length) % images.length])} alt="Illustrative vehicle photography"/>)}</div><button onClick={() => setActive((active + 1) % images.length)} aria-label="Next example">›</button><p>{images.map((_, i) => <button key={i} className={active === i ? "active" : ""} onClick={() => setActive(i)} aria-label={`Example ${i + 1}`}/>)}</p></div>; }
 
 export function ImageViewport({ photo, update }: { photo: Photo; update: (regions: Region[]) => void }) {
@@ -82,7 +115,25 @@ export function ImageViewport({ photo, update }: { photo: Photo; update: (region
 }
 
 export function PlateEditor({ photos, active, setActive, setPhotos, complete }: { photos: Photo[]; active: number; setActive: (number: number) => void; setPhotos: (photos: Photo[]) => void; complete: () => void }) { const photo = photos[active]; const update = (regions: Region[]) => setPhotos(photos.map((item, index) => index === active ? { ...item, regions } : item)); return <div className="mf-editor"><aside><span className="mf-overline">TOOLS</span><h3>Mark license plates</h3><p>Zoom in and draw one rectangle over every visible plate.</p><p className="mf-shortcuts">Manual marking only.<br/>Automatic plate detection is not enabled.<br/><br/>Space: pan image<br/>Delete: remove selected region</p><button className="mf-text-button" onClick={() => update([])} disabled={!photo.regions.length}>Clear all marks</button></aside><div className="mf-editor-main"><ImageViewport photo={photo} update={update}/><div className="mf-filmstrip">{photos.map((item, index) => <button key={item.id} className={active === index ? "active" : ""} onClick={() => setActive(index)}><img src={item.url} alt={`Photo ${index + 1}`}/><small>{item.regions.length ? `${item.regions.length} marked` : `Photo ${index + 1}`}</small></button>)}</div><footer><span>{photos.reduce((total, item) => total + item.regions.length, 0)} plate regions marked</span><div><button className="mf-outline" onClick={() => setActive(Math.max(0, active - 1))}>Previous</button><button className="mf-outline" onClick={() => setActive(Math.min(photos.length - 1, active + 1))}>Next</button><button className="mf-button" disabled={!photos.some((item) => item.regions.length)} onClick={complete}>Review and download</button></div></footer></div></div>; }
-export function PlateReviewGallery({ photos, results, active, setActive }: { photos: Photo[]; results: string[]; active: number; setActive: (number: number) => void }) { return <div className="mf-review"><span className="mf-overline">STEP 03 / 03</span><h3>Your photos are ready to review</h3><p>Check every visible license plate before publishing. Blur applies only to marked regions.</p><img src={results[active]} alt="Blurred vehicle result"/><div>{results.map((result, index) => <button className={active === index ? "active" : ""} key={result} onClick={() => setActive(index)}><img src={result} alt={`Result ${index + 1}`}/></button>)}</div><a className="mf-button" href={results[active]} download={`${photos[active].file.name.replace(/\.[^.]+$/, "")}-blurred.jpg`}><Download size={16}/> Download this image</a><small>Processed locally. Blur does not guarantee irreversible anonymization.</small></div>; }
+export function PlateReviewGallery({ photos, results, active, setActive }: { photos: Photo[]; results: string[]; active: number; setActive: (number: number) => void }) {
+  const [profileId, setProfileId] = useState(exportProfiles[0].id);
+  const [cropToFill, setCropToFill] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
+  const profile = exportProfiles.find((item) => item.id === profileId) ?? exportProfiles[0];
+  const downloadExport = async () => {
+    setExporting(true); setExportError("");
+    try {
+      const blob = await resizeForExport(results[active], profile, cropToFill);
+      const url = URL.createObjectURL(blob), link = document.createElement("a");
+      link.href = url;
+      link.download = `${photos[active].file.name.replace(/\.[^.]+$/, "")}-${profile.id}.jpg`;
+      document.body.appendChild(link); link.click(); link.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch (reason) { setExportError(reason instanceof Error ? reason.message : "Unable to create this export."); }
+    finally { setExporting(false); }
+  };
+  return <div className="mf-review"><span className="mf-overline">STEP 03 / 03</span><h3>Your photo is ready to review</h3><p>Check every visible license plate before publishing. Blur applies only to marked regions.</p><img src={results[active]} alt="Blurred vehicle result"/><div>{results.map((result, index) => <button className={active === index ? "active" : ""} key={result} onClick={() => setActive(index)}><img src={result} alt={`Result ${index + 1}`}/></button>)}</div><section className="mf-export"><div><span className="mf-overline">EXPORT FORMAT</span><h4>Export for a platform</h4><p>High-quality resize stays on your device.</p></div><div className="mf-export-profiles">{exportProfiles.map((item) => <button key={item.id} className={profileId === item.id ? "active" : ""} onClick={() => setProfileId(item.id)}><strong>{item.platform}</strong><span>{item.name}</span><small>{item.width} × {item.height} · JPEG {Math.round(item.quality * 100)}%</small></button>)}</div><div className="mf-export-actions"><div><button className={!cropToFill ? "active" : ""} onClick={() => setCropToFill(false)}>Keep full vehicle</button><button className={cropToFill ? "active" : ""} onClick={() => setCropToFill(true)}>Fill format</button></div><button className="mf-button" onClick={() => void downloadExport()} disabled={exporting}><Download size={16}/>{exporting ? "Preparing export…" : `Download ${profile.width} × ${profile.height}`}</button></div>{exportError && <p className="mf-error">{exportError}</p>}</section><a className="mf-outline" href={results[active]} download={`${photos[active].file.name.replace(/\.[^.]+$/, "")}-blurred.jpg`}><Download size={16}/> Download original size</a><small>Processed locally. Blur does not guarantee irreversible anonymization.</small></div>;
+}
 export function ReviewResult() { return null; }
 
 export function PlateWizard() {
