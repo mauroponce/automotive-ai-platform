@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/authorization", () => ({ currentPrincipal: vi.fn() }));
-vi.mock("@/lib/db", () => ({ db: { organization: { create: vi.fn() } } }));
+const transactionDb = { $executeRaw: vi.fn(), membership: { findFirst: vi.fn() }, organization: { create: vi.fn() } };
+vi.mock("@/lib/db", () => ({ db: { $transaction: vi.fn(async (operation: (tx: typeof transactionDb) => unknown) => operation(transactionDb)) } }));
 
 import { POST } from "@/app/api/auth/register/route";
 import { currentPrincipal } from "@/lib/authorization";
@@ -28,12 +29,13 @@ describe("Google registration", () => {
     }));
 
     expect(response.status).toBe(401);
-    expect(db.organization.create).not.toHaveBeenCalled();
+    expect(db.$transaction).not.toHaveBeenCalled();
   });
 
   it("creates an owner workspace with an exact fourteen-day trial", async () => {
     vi.mocked(currentPrincipal).mockResolvedValue(principal);
-    vi.mocked(db.organization.create).mockResolvedValue({
+    transactionDb.membership.findFirst.mockResolvedValue(null);
+    transactionDb.organization.create.mockResolvedValue({
       id: "organization-1",
       name: "North Motors",
       trialStartedAt: new Date(),
@@ -45,7 +47,7 @@ describe("Google registration", () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ organizationName: " North Motors " }),
     }));
-    const create = vi.mocked(db.organization.create).mock.calls[0][0];
+    const create = transactionDb.organization.create.mock.calls[0][0];
     const startedAt = create.data.trialStartedAt as Date;
     const endsAt = create.data.trialEndsAt as Date;
 

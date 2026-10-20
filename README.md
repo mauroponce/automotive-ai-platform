@@ -22,7 +22,7 @@ The default local stack exposes the app at http://localhost:3000 and PostgreSQL 
 
 MinIO and the background worker are reserved for object-storage and asynchronous flows: `docker compose --profile object-storage --profile workers up --build`. Default local MinIO credentials are documented in `.env.example`; change them outside development.
 
-Run database migrations with `docker compose exec web npm run db:migrate` and seed the prompt/model registry with `docker compose exec web npx tsx prisma/seed.ts`.
+The one-shot Compose migrator applies database migrations automatically. Seed the prompt/model registry with `docker compose exec web npx tsx prisma/seed.ts`. Migrations use the owner URL, while the application and worker use the limited `automotive_app` role so tenant RLS policies remain effective.
 
 See `docs/hetzner-deployment.md` for Hetzner, `docs/openai-setup.md` for explicit paid inference authorization, and `docs/api-contract.md` for the API.
 

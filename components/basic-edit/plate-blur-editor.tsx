@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- The editor renders local blob URLs at their natural pixel dimensions. */
 
 import { Download, LoaderCircle, Plus, Trash2, Upload } from "lucide-react";
 import { useRef, useState } from "react";

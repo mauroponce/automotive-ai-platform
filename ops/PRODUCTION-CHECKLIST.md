@@ -4,6 +4,7 @@
 - [ ] `web`, `worker`, `postgres`, and `caddy` are healthy.
 - [ ] Caddy has issued a valid HTTPS certificate.
 - [ ] PostgreSQL is not publicly exposed.
+- [ ] Web and worker connect as the non-superuser `automotive_app` role; only the migrator has the owner URL.
 - [ ] Secrets are outside Git with minimal permissions.
 - [ ] Hetzner Object Storage is private and uses least-privilege credentials.
 - [ ] PostgreSQL backups have been restored successfully in an isolated test environment.

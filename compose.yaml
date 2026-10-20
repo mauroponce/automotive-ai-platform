@@ -1,4 +1,12 @@
 services:
+  migrate:
+    build: { context: ., target: migrator }
+    environment:
+      MIGRATION_DATABASE_URL: postgresql://automotive:automotive_local_only@postgres:5432/automotive?schema=public
+      POSTGRES_APP_PASSWORD: automotive_app_local_only
+      POSTGRES_DB: automotive
+    restart: "no"
+    depends_on: { postgres: { condition: service_healthy } }
   web:
     build: { context: ., target: development }
     command: >-
@@ -8,24 +16,29 @@ services:
     ports: ["3000:3000"]
     env_file: .env.local
     environment:
+      DATABASE_URL: postgresql://automotive_app:automotive_app_local_only@postgres:5432/automotive?schema=public
+      MIGRATION_DATABASE_URL: postgresql://automotive:automotive_local_only@postgres:5432/automotive?schema=public
+      POSTGRES_APP_PASSWORD: automotive_app_local_only
+      POSTGRES_DB: automotive
       PLATE_LAB_STORAGE_ROOT: /var/lib/plate-lab
       BASIC_EDIT_STORAGE_ROOT: /app/data/basic-edit
     volumes: [".:/app", "web_node_modules:/app/node_modules", "plate_lab_data:/var/lib/plate-lab"]
-    depends_on: { postgres: { condition: service_healthy } }
+    depends_on: { migrate: { condition: service_completed_successfully } }
     healthcheck: { test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"], interval: 10s, timeout: 5s, retries: 12 }
   worker:
     build: { context: ., target: development }
     command: npm run worker
     env_file: .env.local
     environment:
+      DATABASE_URL: postgresql://automotive_app:automotive_app_local_only@postgres:5432/automotive?schema=public
       PLATE_LAB_STORAGE_ROOT: /var/lib/plate-lab
     volumes: [".:/app", "worker_node_modules:/app/node_modules", "plate_lab_data:/var/lib/plate-lab"]
     profiles: ["workers"]
-    depends_on: { postgres: { condition: service_healthy } }
+    depends_on: { migrate: { condition: service_completed_successfully } }
   postgres:
     image: postgres:16
-    environment: { POSTGRES_DB: automotive, POSTGRES_USER: automotive, POSTGRES_PASSWORD: automotive_local_only }
-    volumes: ["postgres_data:/var/lib/postgresql/data"]
+    environment: { POSTGRES_DB: automotive, POSTGRES_USER: automotive, POSTGRES_PASSWORD: automotive_local_only, POSTGRES_APP_PASSWORD: automotive_app_local_only }
+    volumes: ["postgres_data:/var/lib/postgresql/data", "./ops/init-app-role.sh:/docker-entrypoint-initdb.d/10-app-role.sh:ro", "./ops/ensure-app-role.sql:/docker-entrypoint-initdb.d/ensure-app-role.sql:ro"]
     healthcheck: { test: ["CMD-SHELL", "pg_isready -U automotive -d automotive"], interval: 5s, timeout: 5s, retries: 12 }
   minio:
     profiles: ["object-storage"]

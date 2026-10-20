@@ -13,12 +13,15 @@ export const batchCreateSchema = z.object({
   vehicleLabel: z.string().trim().min(1).max(120),
   sourceAssetIds: z.array(assetId).min(1).max(15).superRefine((ids, context) => { if (new Set(ids).size !== ids.length) context.addIssue({ code: "custom", message: "Each source image can appear only once." }); }),
   background: batchBackgroundSchema,
-  plateTreatment: z.enum(["blur", "hide", "registered_template"]),
+  plateTreatment: z.enum(["preserve", "blur", "hide", "registered_template"]),
   plateTemplateId: z.string().cuid().optional(),
   idempotencyKey: z.string().min(16).max(200),
 }).superRefine((value, context) => {
-  if (value.plateTreatment === "registered_template" && !value.plateTemplateId) context.addIssue({ code: "custom", path: ["plateTemplateId"], message: "A registered plate template is required." });
-  if (value.plateTreatment !== "registered_template" && value.plateTemplateId) context.addIssue({ code: "custom", path: ["plateTemplateId"], message: "Plate templates are only valid for registered-template treatment." });
+  if (value.plateTreatment !== "preserve") {
+    context.addIssue({ code: "custom", path: ["plateTreatment"], message: "Only preserve plate treatment is available in the current pilot." });
+    return;
+  }
+  if (value.plateTemplateId) context.addIssue({ code: "custom", path: ["plateTemplateId"], message: "Plate templates are not available in the current pilot." });
 });
 
 export type ImageUsage = { inputTokens?: number; outputTokens?: number; inputTokensDetails?: { imageTokens?: number; textTokens?: number } };

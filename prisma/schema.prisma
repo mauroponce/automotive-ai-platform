@@ -54,6 +54,7 @@ enum VehicleBackgroundSource {
   BATCH_UPLOAD
 }
 enum VehiclePlateTreatment {
+  PRESERVE
   BLUR
   HIDE
   REGISTERED_TEMPLATE
@@ -290,6 +291,9 @@ model Asset {
   objectKey String @unique
   contentType String
   byteSize Int
+  checksum String?
+  width Int?
+  height Int?
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   batchSourceItems VehicleProcessingItem[] @relation("VehicleBatchSourceAsset")
   batchOutputItems VehicleProcessingItem[] @relation("VehicleBatchOutputAsset")

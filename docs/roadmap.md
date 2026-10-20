@@ -1,7 +1,7 @@
 # Roadmap
 
-1. Add connected PostgreSQL/MinIO integration tests for registration, storage, and tenant access.
-2. Complete atomic reservation/settlement queries around pg-boss dispatch.
+1. Expand the connected PostgreSQL RLS test suite to cover registration races and MinIO-backed storage finalization.
+2. Add operational alerts and reconciliation tooling for batches that exhaust transient retries.
 3. Enable authenticated dealership UI and API-key middleware/rate limits.
 4. Conduct one user-authorized real generation, compare retained originals, and reconcile provider cost.
 

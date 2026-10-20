@@ -1,21 +1,36 @@
 services:
+  migrate:
+    image: ${MIGRATOR_IMAGE_TAG:-ghcr.io/your-org/automotive-ai-platform:migrator}
+    build: { context: ., target: migrator }
+    command: bash ops/migrate.sh
+    env_file: .env.production
+    restart: "no"
+    depends_on: { postgres: { condition: service_healthy } }
   web:
     image: ${IMAGE_TAG:-ghcr.io/your-org/automotive-ai-platform:latest}
     build: { context: ., target: production }
+    command: node server.js
     env_file: .env.production
+    environment:
+      BASIC_EDIT_STORAGE_ROOT: /var/lib/basic-edit
+      PLATE_LAB_STORAGE_ROOT: /var/lib/plate-lab
     restart: unless-stopped
-    depends_on: { postgres: { condition: service_healthy } }
+    volumes: ["basic_edit_data:/var/lib/basic-edit", "plate_lab_data:/var/lib/plate-lab"]
+    depends_on: { migrate: { condition: service_completed_successfully } }
   worker:
     image: ${IMAGE_TAG:-ghcr.io/your-org/automotive-ai-platform:latest}
-    command: npm run worker
+    command: node dist/worker.cjs
     env_file: .env.production
+    environment:
+      PLATE_LAB_STORAGE_ROOT: /var/lib/plate-lab
     restart: unless-stopped
-    depends_on: { postgres: { condition: service_healthy } }
+    volumes: ["plate_lab_data:/var/lib/plate-lab"]
+    depends_on: { migrate: { condition: service_completed_successfully } }
   postgres:
     image: postgres:16-alpine
     env_file: .env.production
     restart: unless-stopped
-    volumes: ["postgres_data:/var/lib/postgresql/data"]
+    volumes: ["postgres_data:/var/lib/postgresql/data", "./ops/init-app-role.sh:/docker-entrypoint-initdb.d/10-app-role.sh:ro", "./ops/ensure-app-role.sql:/docker-entrypoint-initdb.d/ensure-app-role.sql:ro"]
     healthcheck: { test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"], interval: 10s, timeout: 5s, retries: 12 }
   caddy:
     image: caddy:2-alpine
@@ -23,4 +38,4 @@ services:
     ports: ["80:80", "443:443"]
     volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro", "caddy_data:/data", "caddy_config:/config"]
     depends_on: [web]
-volumes: { postgres_data: {}, caddy_data: {}, caddy_config: {} }
+volumes: { postgres_data: {}, basic_edit_data: {}, plate_lab_data: {}, caddy_data: {}, caddy_config: {} }

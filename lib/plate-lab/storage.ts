@@ -10,5 +10,5 @@ export const plateLabStorage = {
     await mkdir(path.dirname(destination), { recursive: true }); await writeFile(destination, body);
     return { key, checksum: createHash("sha256").update(body).digest("hex") };
   },
-  async get(key: string) { return readFile(/* turbopackIgnore: true */ path.join(root(), safeKey(key))); },
+  async get(key: string) { return readFile(path.join(/* turbopackIgnore: true */ root(), safeKey(key))); },
 };

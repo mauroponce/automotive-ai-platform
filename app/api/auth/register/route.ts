@@ -16,13 +16,18 @@ export async function POST(request: Request) {
 
   const trialStartedAt = new Date();
   try {
-    const organization = await db.organization.create({
-      data: {
-        name: input.data.organizationName,
-        trialStartedAt,
-        trialEndsAt: trialEndsAt(trialStartedAt),
-        memberships: { create: { role: "OWNER", userId: user.id } },
-      },
+    const organization = await db.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${user.id}))`;
+      const existingMembership = await tx.membership.findFirst({ where: { userId: user.id }, select: { userId: true } });
+      if (existingMembership) throw new Error("This account already belongs to a dealership.");
+      return tx.organization.create({
+        data: {
+          name: input.data.organizationName,
+          trialStartedAt,
+          trialEndsAt: trialEndsAt(trialStartedAt),
+          memberships: { create: { role: "OWNER", userId: user.id } },
+        },
+      });
     });
     return Response.json({ data: { organizationId: organization.id, trialEndsAt: organization.trialEndsAt } }, { status: 201 });
   } catch {
