@@ -80,3 +80,15 @@ test("real ONNX suggestions on an existing illustrative vehicle remain adjustabl
   await expect.poll(async () => (await region.boundingBox())!.width).toBeGreaterThan(before!.width);
   expect(uploads).toEqual([]);
 });
+
+test("a browser without Canvas blur support cannot produce a falsely successful result", async ({ page }) => {
+  await page.addInitScript(() => { Reflect.deleteProperty(CanvasRenderingContext2D.prototype, "filter"); });
+  await page.goto("/en/tools/blur-license-plate");
+  await page.locator('input[type="file"]').setInputFiles("public/motorframe/suv-plata.webp");
+  await expect(page.getByRole("button", { name: "Mark", exact: true })).toBeVisible({ timeout: 90000 });
+  await expect(page.locator(".mf-processing")).toHaveCount(0, { timeout: 90000 });
+  await page.getByRole("button", { name: "Review and download" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "Your browser cannot blur this photo locally" })).toBeVisible();
+  await expect(page.locator(".mf-review")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Download original size" })).toHaveCount(0);
+});

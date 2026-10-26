@@ -40,7 +40,7 @@ async function blur(photo: Photo) {
   blurredCanvas.width = canvas.width;
   blurredCanvas.height = canvas.height;
   const blurredContext = blurredCanvas.getContext("2d");
-  if (!blurredContext) throw new Error("Your browser could not process this image.");
+  if (!blurredContext || !("filter" in blurredContext)) throw new Error("Your browser cannot blur this photo locally. Try a different browser.");
 
   photo.regions.forEach((region) => {
     const paddingX = region.width * .08;
