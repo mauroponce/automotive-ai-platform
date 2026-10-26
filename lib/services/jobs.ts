@@ -1,6 +1,0 @@
-import { randomUUID } from "node:crypto"; import { z } from "zod"; import { validateSettings } from "@/lib/models"; import { generationContextSchema } from "@/lib/prompt-orchestration/context"; import { buildVehicleImagePrompt } from "@/lib/prompt-orchestration/builder";
-export const jobSchema=z.object({vehicleAssetId:z.string().uuid(),showroomAssetId:z.string().uuid().optional(),promptVersionId:z.string().uuid(),model:z.string(),quality:z.enum(["high","medium"]).default("high"),context:generationContextSchema.optional(),idempotencyKey:z.string().min(16).max(200)});
-export type JobInput=z.infer<typeof jobSchema>;
-export type QueuedJob={id:string;status:"queued";idempotencyKey:string;settings:ReturnType<typeof validateSettings>;prompt:string};
-const demoJobs=new Map<string,QueuedJob>();
-export function createJob(raw:unknown, tenantScope="test"):QueuedJob {const data=jobSchema.parse(raw);const settings=validateSettings({model:data.model as ReturnType<typeof validateSettings>["model"],quality:data.quality});const scopedKey=`${tenantScope}:${data.idempotencyKey}`;const existing=demoJobs.get(scopedKey);if(existing)return existing;const prompt=buildVehicleImagePrompt(data.context).prompt;const job={id:randomUUID(),status:"queued" as const,idempotencyKey:data.idempotencyKey,settings,prompt};demoJobs.set(scopedKey,job);return job;}

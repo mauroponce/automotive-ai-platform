@@ -1,5 +1,14 @@
-import { createJob } from "@/lib/services/jobs"; import { ZodError } from "zod";
 import { AuthorizationError, requirePortalUser } from "@/lib/authorization";
-export const runtime="nodejs";
-export async function POST(request:Request){try {const user=await requirePortalUser();if(process.env.APP_DEMO_MODE==="false")return Response.json({error:{code:"live_api_unavailable",message:"Live API processing is not enabled."}},{status:503});const job=createJob(await request.json(),user.id);return Response.json({data:job,meta:{demo:true}},{status:202});}catch(error){if(error instanceof AuthorizationError)return Response.json({error:{code:"unauthorized",message:"Authentication required"}},{status:401});if(error instanceof ZodError)return Response.json({error:{code:"validation_error",message:"Invalid job request",details:error.issues}},{status:400});return Response.json({error:{code:"job_creation_failed",message:error instanceof Error?error.message:"Unknown error"}},{status:500});}}
-export async function GET(){try{await requirePortalUser();return Response.json({data:[],meta:{nextCursor:null,demo:process.env.APP_DEMO_MODE!=="false"}});}catch(error){if(error instanceof AuthorizationError)return Response.json({error:{code:"unauthorized",message:"Authentication required"}},{status:401});throw error;}}
+export const runtime = "nodejs";
+
+async function unavailable() {
+  try {
+    await requirePortalUser();
+    return Response.json({ error: { code: "commercial_api_pending", message: "The commercial API is pending. Use the authorized dealership batch workflow." } }, { status: 503 });
+  } catch (error) {
+    if (error instanceof AuthorizationError) return Response.json({ error: { code: "unauthorized", message: "Authentication required" } }, { status: 401 });
+    throw error;
+  }
+}
+export const GET = unavailable;
+export const POST = unavailable;

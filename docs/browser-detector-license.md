@@ -4,6 +4,7 @@ Reviewed 2026-10-25. **Commercial redistribution approval remains blocked.** The
 
 - Artifact: `public/models/yolo-v9-t-512-license-plates-end2end.onnx`, added in commit `a89acdd`.
 - SHA-256: `746fdd358ec110418775d7c9d8d07910d48b1a21471f92bf4421f6510d6daade`.
+- The upstream release binary was downloaded during review and its SHA-256 matches the checked-in artifact. This verifies the source artifact, not rights to use it.
 - Recorded source: Open Image Models assets. The upstream [model hub](https://github.com/ankandrew/open-image-models/blob/main/open_image_models/detection/core/hub.py) points this filename at its GitHub `assets` release.
 - Upstream [code license](https://github.com/ankandrew/open-image-models/blob/main/LICENSE) is MIT. That alone does not establish rights to the specific weights, training datasets, or commercial redistribution of the checked-in binary.
 - The repository has no model-specific weight license, training dataset provenance or signed approval. Historical laboratory metadata explicitly classified these weights as evaluation-only. No accuracy result here establishes performance on Argentine/Mercosur plates.
