@@ -59,3 +59,24 @@ test("retired tools are absent and dealership APIs require authentication", asyn
   }
   expect((await request.get("/api/dealership/organizations")).status()).toBe(401);
 });
+
+test("real ONNX suggestions on an existing illustrative vehicle remain adjustable", async ({ page }) => {
+  const uploads: string[] = [];
+  page.on("request", (request) => { if (request.method() !== "GET") uploads.push(request.url()); });
+  await page.goto("/en/tools/blur-license-plate");
+  await page.locator('input[type="file"]').setInputFiles("public/motorframe/suv-plata.webp");
+  await expect(page.getByRole("button", { name: "Mark", exact: true })).toBeVisible({ timeout: 90000 });
+  await expect(page.locator(".mf-processing")).toHaveCount(0, { timeout: 90000 });
+  await expect(page.locator(".mf-error")).toHaveCount(0);
+  expect(await page.locator(".mf-region").count()).toBeGreaterThan(0);
+  await page.getByRole("button", { name: "Resize selection from se" }).scrollIntoViewIfNeeded();
+  const region = page.locator(".mf-region-wrap").first();
+  const before = await region.boundingBox();
+  const handle = await page.getByRole("button", { name: "Resize selection from se" }).boundingBox();
+  await page.mouse.move(handle!.x + handle!.width / 2, handle!.y + handle!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(handle!.x + handle!.width / 2 + 12, handle!.y + handle!.height / 2 + 8, { steps: 4 });
+  await page.mouse.up();
+  await expect.poll(async () => (await region.boundingBox())!.width).toBeGreaterThan(before!.width);
+  expect(uploads).toEqual([]);
+});

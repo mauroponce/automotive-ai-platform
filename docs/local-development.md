@@ -8,7 +8,7 @@ Run `npm ci`, `npm run db:generate`, `npm run typecheck`, `npm run lint`, `npm t
 
 ## Browser acceptance
 
-Install Chromium with `npx playwright install chromium`, then run `npm run test:e2e` after a production build. Playwright starts an isolated app on port 3100 with paid processing disabled. The synthetic fixture exercises real local ONNX/WASM loading, manual correction/resizing, zoom/pan, Canvas export, anonymous download and a network assertion rejecting any POST or external request. It also verifies removed routes return 404. This proves the browser transport/interaction contract, not detector recall on real plates.
+Install Chromium with `npx playwright install chromium`, then run `npm run test:e2e` after a production build. Playwright starts an isolated app on port 3100 with paid processing disabled. Synthetic and checked-in illustrative fixtures exercise real local ONNX/WASM loading, positive automatic suggestions, manual correction/resizing, zoom/pan, Canvas export, anonymous download and network assertions rejecting image uploads or external requests. It also verifies removed routes return 404. This proves the browser transport/interaction contract, not detector recall on real plates.
 
 ## Persistent pilot acceptance
 
