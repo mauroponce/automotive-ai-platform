@@ -44,6 +44,10 @@ test("anonymous plate blur uses real local ONNX, editable Canvas regions and loc
   expect(result.info.width).toBe(800);
   const original = await sharp(source).raw().toBuffer();
   expect(result.data.equals(original)).toBe(false);
+  const crop = { left: 300, top: 350, width: 200, height: 80 };
+  const before = await sharp(source).extract(crop).stats();
+  const after = await sharp(file!).extract(crop).stats();
+  expect(after.channels[0].stdev).toBeLessThan(before.channels[0].stdev * .85);
   await page.screenshot({ path: "test-results/browser-plate-result.png", fullPage: true });
   expect(requests.filter(({ method }) => method !== "GET")).toEqual([]);
   expect(requests.filter(({ url }) => /^https?:/.test(url) && !url.startsWith("http://127.0.0.1:3100/"))).toEqual([]);
