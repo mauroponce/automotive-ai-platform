@@ -15,13 +15,19 @@ ENV NODE_ENV=production
 RUN npm run build
 RUN npm run build:worker
 
-FROM node:24-bookworm-slim AS migrator
-WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates postgresql-client && rm -rf /var/lib/apt/lists/*
-RUN npm install --no-save prisma@6.19.3 pg-boss@12.38.0
-COPY prisma ./prisma
-COPY ops ./ops
+FROM base AS migrator
 CMD ["bash", "ops/migrate.sh"]
+
+FROM builder AS worker-dependencies
+RUN npm prune --omit=dev
+
+FROM node:24-bookworm-slim AS worker
+WORKDIR /app
+ENV NODE_ENV=production
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY --from=worker-dependencies /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+CMD ["node", "dist/worker.cjs"]
 
 FROM node:24-bookworm-slim AS production
 WORKDIR /app

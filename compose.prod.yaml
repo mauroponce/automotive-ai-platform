@@ -18,7 +18,8 @@ services:
     volumes: ["basic_edit_data:/var/lib/basic-edit", "plate_lab_data:/var/lib/plate-lab"]
     depends_on: { migrate: { condition: service_completed_successfully } }
   worker:
-    image: ${IMAGE_TAG:-ghcr.io/your-org/automotive-ai-platform:latest}
+    image: ${WORKER_IMAGE_TAG:-ghcr.io/your-org/automotive-ai-platform:worker}
+    build: { context: ., target: worker }
     command: node dist/worker.cjs
     env_file: .env.production
     environment:
