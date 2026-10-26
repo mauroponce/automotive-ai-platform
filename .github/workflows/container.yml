@@ -6,6 +6,9 @@ on:
   pull_request:
 permissions:
   contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   quality:
     runs-on: ubuntu-latest
@@ -44,7 +47,7 @@ jobs:
       - run: npm run db:migrate
       - run: docker build -f Dockerfile.storage -t automotive-test-storage .
       - run: docker run -d --name integration-minio -p 127.0.0.1:59000:9000 -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadminchange automotive-test-storage
-      - run: curl --retry 20 --retry-delay 1 --retry-connrefused --fail http://localhost:59000/minio/health/live
+      - run: curl --retry 30 --retry-delay 1 --retry-all-errors --retry-max-time 90 --max-time 5 --fail http://localhost:59000/minio/health/live
       - run: npm run test:integration
       - run: npm run build
       - run: npm run build:worker
@@ -59,27 +62,39 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: production
+          load: true
+          tags: automotive-ci:web
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: worker
+          load: true
+          tags: automotive-ci:worker
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: migrator
+          load: true
+          tags: automotive-ci:migrator
+      - run: bash ops/smoke-containers.sh
+      - run: docker run --rm -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" -e DOMAIN=photos.example.test caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
       - uses: docker/login-action@v3
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          target: production
-          push: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) }}
-          tags: ghcr.io/${{ github.repository_owner }}/automotive-ai-platform:latest
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          target: worker
-          push: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) }}
-          tags: ghcr.io/${{ github.repository_owner }}/automotive-ai-platform:worker
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          target: migrator
-          push: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) }}
-          tags: ghcr.io/${{ github.repository_owner }}/automotive-ai-platform:migrator
+      - name: Publish verified images
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+        run: |
+          registry=ghcr.io/${{ github.repository_owner }}/automotive-ai-platform
+          docker tag automotive-ci:web "$registry:latest"
+          docker tag automotive-ci:worker "$registry:worker"
+          docker tag automotive-ci:migrator "$registry:migrator"
+          docker push "$registry:latest"
+          docker push "$registry:worker"
+          docker push "$registry:migrator"
