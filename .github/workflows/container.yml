@@ -24,6 +24,12 @@ jobs:
       POSTGRES_APP_PASSWORD: automotive_app_local_only
       POSTGRES_DB: automotive
       APP_DEMO_MODE: "true"
+      S3_ENDPOINT: http://localhost:59000
+      S3_REGION: us-east-1
+      S3_BUCKET: automotive-integration
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadminchange
+      S3_FORCE_PATH_STYLE: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -36,6 +42,9 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run db:migrate
+      - run: docker build -f Dockerfile.storage -t automotive-test-storage .
+      - run: docker run -d --name integration-minio -p 127.0.0.1:59000:9000 -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadminchange automotive-test-storage
+      - run: curl --retry 20 --retry-delay 1 --retry-connrefused --fail http://localhost:59000/minio/health/live
       - run: npm run test:integration
       - run: npm run build
       - run: npm run build:worker
