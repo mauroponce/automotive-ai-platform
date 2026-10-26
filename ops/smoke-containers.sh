@@ -45,3 +45,7 @@ for name in "$web" "$worker"; do
   if [[ "$ready" != true ]]; then docker logs "$name"; exit 1; fi
   echo "$name: healthy"
 done
+
+# Exercise the native/runtime dependencies that a liveness route alone cannot load.
+docker exec "$web" node -e 'const {PrismaClient}=require("@prisma/client"); const db=new PrismaClient(); db.$queryRawUnsafe("SELECT 1").then(()=>db.$disconnect()).catch((error)=>{console.error(error.message);process.exit(1)});'
+docker exec "$worker" node -e 'require("sharp")({create:{width:1,height:1,channels:3,background:"white"}}).png().toBuffer().then(()=>console.log("Worker Sharp runtime ready")).catch((error)=>{console.error(error.message);process.exit(1)});'
