@@ -1,9 +1,10 @@
+import { enqueueVehicleBatchDispatch } from "@/lib/queue";
 import { randomUUID } from "node:crypto";
 import { AssetKind, Prisma, VehicleBackgroundSource, VehiclePlateTreatment, VehicleProcessingBatchStatus, VehicleProcessingItemStatus } from "@prisma/client";
 import { withRlsBypass, withTenantDb } from "@/lib/db";
 import { storage } from "@/lib/storage";
 import { normalizeImageUpload } from "@/lib/image-upload";
-import { batchCreateSchema, batchProviderCostUsd, type ImageUsage } from "./models";
+import { batchCreateSchema, batchProviderCostUsd, CURRENT_BATCH_RATE_CARD, type BATCH_RATE_CARDS, type ImageUsage } from "./models";
 import { buildPilotBatchPrompt } from "./prompts";
 
 const presetPaths: Record<string, string> = { "studio-white-v1": "/showrooms/studio-white-v1.png", "showroom-gray-v1": "/showrooms/showroom-gray-v1.png", "showroom-dark-v1": "/showrooms/showroom-dark-v1.png" };
@@ -33,6 +34,7 @@ export async function createRegisteredPlateTemplate(organizationId: string, name
 export async function createVehicleProcessingBatch(input: unknown) {
   const value = batchCreateSchema.parse(input);
   return withTenantDb(value.organizationId, async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${value.organizationId}), hashtext(${value.idempotencyKey}))`;
     const existing = await tx.vehicleProcessingBatch.findUnique({ where: { organizationId_idempotencyKey: { organizationId: value.organizationId, idempotencyKey: value.idempotencyKey } }, include: { items: true } });
     if (existing) return existing;
     const sourceAssets = await tx.asset.findMany({ where: { id: { in: value.sourceAssetIds }, organizationId: value.organizationId, kind: "VEHICLE" } });
@@ -56,17 +58,18 @@ export async function createVehicleProcessingBatch(input: unknown) {
     return tx.vehicleProcessingBatch.create({ data: {
       organizationId: value.organizationId, vehicleLabel: value.vehicleLabel, idempotencyKey: value.idempotencyKey,
       backgroundSource: value.background.source === "platform_preset" ? VehicleBackgroundSource.PLATFORM_PRESET : value.background.source === "organization_asset" ? VehicleBackgroundSource.ORGANIZATION_ASSET : VehicleBackgroundSource.BATCH_UPLOAD,
-      backgroundAssetId, backgroundSnapshot, plateTreatment: value.plateTreatment === "preserve" ? VehiclePlateTreatment.PRESERVE : value.plateTreatment === "blur" ? VehiclePlateTreatment.BLUR : value.plateTreatment === "hide" ? VehiclePlateTreatment.HIDE : VehiclePlateTreatment.REGISTERED_TEMPLATE, plateTemplateId: value.plateTemplateId, configuration: { model: "gpt-image-2.5-sunburst", delivery: "batch_24h", output: "1600x1200", reviewRequired: true, onePromptPerImage: true }, entitlementReservedAt: new Date(),
-      items: { create: sourceAssets.map((asset) => ({ sourceAssetId: asset.id, providerCustomId: randomUUID(), promptSnapshot: buildPilotBatchPrompt() })) },
+      backgroundAssetId, backgroundSnapshot, plateTreatment: value.plateTreatment === "preserve" ? VehiclePlateTreatment.PRESERVE : value.plateTreatment === "blur" ? VehiclePlateTreatment.BLUR : value.plateTreatment === "hide" ? VehiclePlateTreatment.HIDE : VehiclePlateTreatment.REGISTERED_TEMPLATE, plateTemplateId: value.plateTemplateId, configuration: { model: "gpt-image-2.5-sunburst", delivery: "batch_24h", output: "1600x1200", reviewRequired: true, onePromptPerImage: true, rateCard: CURRENT_BATCH_RATE_CARD, instructions: value.instructions }, entitlementReservedAt: new Date(),
+      items: { create: sourceAssets.map((asset) => ({ sourceAssetId: asset.id, providerCustomId: randomUUID(), promptSnapshot: buildPilotBatchPrompt(value.instructions) })) },
     }, include: { items: true } });
   });
 }
 
 export async function queueVehicleProcessingBatch(organizationId: string, batchId: string) {
   return withTenantDb(organizationId, async (tx) => {
-    const claimed = await tx.vehicleProcessingBatch.updateMany({ where: { id: batchId, organizationId, status: { in: [VehicleProcessingBatchStatus.DRAFT, VehicleProcessingBatchStatus.FAILED] } }, data: { status: VehicleProcessingBatchStatus.QUEUED, errorMessage: null } });
+    const claimed = await tx.vehicleProcessingBatch.updateMany({ where: { id: batchId, organizationId, status: VehicleProcessingBatchStatus.DRAFT, entitlementReservedAt: { not: null } }, data: { status: VehicleProcessingBatchStatus.QUEUED, errorMessage: null } });
     const batch = await tx.vehicleProcessingBatch.findFirst({ where: { id: batchId, organizationId } });
     if (!batch) throw new Error("Vehicle batch not found.");
+    if (claimed.count === 1) await enqueueVehicleBatchDispatch(batchId, tx);
     return { batch, shouldEnqueue: claimed.count === 1 };
   });
 }
@@ -97,7 +100,7 @@ export async function recordBatchSubmission(batchId: string, providerBatchId: st
   });
 }
 
-export async function storeBatchItemResult(input: { batchId: string; customId: string; output: Buffer; contentType: string; usage: ImageUsage; requestId?: string }) {
+export async function storeBatchItemResult(input: { batchId: string; customId: string; output: Buffer; contentType: string; usage: ImageUsage; requestId?: string; simulated?: boolean }) {
   const item = await withRlsBypass((tx) => tx.vehicleProcessingItem.findFirst({ where: { batchId: input.batchId, providerCustomId: input.customId }, include: { batch: true } }));
   if (
     !item ||
@@ -105,19 +108,28 @@ export async function storeBatchItemResult(input: { batchId: string; customId: s
     item.status === VehicleProcessingItemStatus.APPROVED ||
     item.status === VehicleProcessingItemStatus.REJECTED
   ) return;
-  const normalized = await normalizeImageUpload(new File([new Uint8Array(input.output)], `${item.id}.png`, { type: input.contentType }), { maxBytes: 30_000_000, maxPixels: 40_000_000 });
+  let normalized;
+  try {
+    normalized = await normalizeImageUpload(new File([new Uint8Array(input.output)], `${item.id}.png`, { type: input.contentType }), { maxBytes: 30_000_000, maxPixels: 40_000_000 });
+  } catch {
+    await markBatchItemFailed(input.batchId, input.customId, "Provider returned an invalid image.");
+    return;
+  }
   const output = normalized.body;
-  const evaluation: Record<string, unknown> = { result: "unverified", vehicleFidelity: "manual_review_required", processing: "openai_sunburst_one_prompt", plateTreatment: item.batch.plateTreatment, plateVerification: "manual_review_required" };
-  const key = `${item.batch.organizationId}/generated/${item.id}.png`; await storage.put(key, output, normalized.contentType);
-  const providerCostUsd = batchProviderCostUsd(input.usage);
+  const evaluation: Record<string, unknown> = { result: "unverified", vehicleFidelity: "manual_review_required", processing: input.simulated ? "simulated_provider_test" : "openai_sunburst_one_prompt", simulated: input.simulated === true, plateTreatment: item.batch.plateTreatment, plateVerification: "manual_review_required" };
+  const key = `${item.batch.organizationId}/generated/${item.id}-${normalized.checksum}.png`; await storage.put(key, output, normalized.contentType);
+  const rateCard = (item.batch.configuration as { rateCard?: keyof typeof BATCH_RATE_CARDS }).rateCard;
+  const providerCostUsd = input.simulated ? 0 : rateCard ? batchProviderCostUsd(input.usage, rateCard) : null;
+  evaluation.rateCard = rateCard ?? "legacy_unversioned";
+  evaluation.costStatus = input.simulated ? "simulated_no_charge" : providerCostUsd === null ? "reconciliation_required" : "token_estimate";
   await withRlsBypass(async (tx) => {
     const outputAsset = await tx.asset.upsert({ where: { objectKey: key }, update: { contentType: normalized.contentType, byteSize: output.length, checksum: normalized.checksum, width: normalized.width, height: normalized.height }, create: { organizationId: item.batch.organizationId, kind: "GENERATED", objectKey: key, contentType: normalized.contentType, byteSize: output.length, checksum: normalized.checksum, width: normalized.width, height: normalized.height } });
     const claimed = await tx.vehicleProcessingItem.updateMany({ where: { id: item.id, outputAssetId: null, status: { in: [VehicleProcessingItemStatus.QUEUED, VehicleProcessingItemStatus.SUBMITTED, VehicleProcessingItemStatus.PROCESSING, VehicleProcessingItemStatus.FAILED] } }, data: { status: VehicleProcessingItemStatus.NEEDS_REVIEW, outputAssetId: outputAsset.id, usage: input.usage as Prisma.InputJsonValue, evaluation: evaluation as Prisma.InputJsonValue, providerCostUsd, providerRequestId: input.requestId, errorMessage: null } });
-    if (claimed.count) await tx.vehicleProcessingBatch.update({ where: { id: input.batchId }, data: { actualProviderCostUsd: { increment: providerCostUsd } } });
+    if (claimed.count && providerCostUsd !== null) await tx.vehicleProcessingBatch.update({ where: { id: input.batchId }, data: { actualProviderCostUsd: { increment: providerCostUsd } } });
   });
 }
 
-export async function markBatchItemFailed(batchId: string, customId: string, message: string) { await withRlsBypass((tx) => tx.vehicleProcessingItem.updateMany({ where: { batchId, providerCustomId: customId, status: { notIn: [VehicleProcessingItemStatus.APPROVED, VehicleProcessingItemStatus.REJECTED] } }, data: { status: VehicleProcessingItemStatus.FAILED, errorMessage: message.slice(0, 1000) } })); }
+export async function markBatchItemFailed(batchId: string, customId: string, message: string) { await withRlsBypass((tx) => tx.vehicleProcessingItem.updateMany({ where: { batchId, providerCustomId: customId, outputAssetId: null, status: { in: [VehicleProcessingItemStatus.QUEUED, VehicleProcessingItemStatus.SUBMITTED, VehicleProcessingItemStatus.PROCESSING] } }, data: { status: VehicleProcessingItemStatus.FAILED, errorMessage: message.slice(0, 1000) } })); }
 
 export async function reviewBatchItem(organizationId: string, batchId: string, itemId: string, approved: boolean) {
   return withTenantDb(organizationId, async (tx) => {
@@ -134,11 +146,13 @@ export async function reviewBatchItem(organizationId: string, batchId: string, i
 }
 
 export async function completeVehicleBatch(batchId: string) { return withRlsBypass((tx) => tx.vehicleProcessingBatch.update({ where: { id: batchId }, data: { status: VehicleProcessingBatchStatus.COMPLETED, completedAt: new Date() } })); }
+export async function claimBatchSubmission(batchId: string) {
+  const claimed = await withRlsBypass((tx) => tx.vehicleProcessingBatch.updateMany({ where: { id: batchId, status: "QUEUED", startedAt: null, entitlementReservedAt: { not: null } }, data: { startedAt: new Date() } }));
+  if (!claimed.count) throw new Error("Submission already attempted. Reconcile with the provider before authorizing another attempt.");
+}
+
 export async function failVehicleBatch(batchId: string, error: unknown) {
-  return withRlsBypass(async (tx) => {
-    const batch = await tx.vehicleProcessingBatch.findUniqueOrThrow({ where: { id: batchId } });
-    const failed = await tx.vehicleProcessingBatch.updateMany({ where: { id: batchId, entitlementReservedAt: { not: null }, entitlementConsumedAt: null, status: { notIn: [VehicleProcessingBatchStatus.COMPLETED, VehicleProcessingBatchStatus.CANCELED] } }, data: { status: VehicleProcessingBatchStatus.FAILED, entitlementReservedAt: null, errorMessage: error instanceof Error ? error.message.slice(0, 1000) : "Vehicle batch failed" } });
-    if (failed.count) await tx.pilotOrganizationEntitlement.updateMany({ where: { organizationId: batch.organizationId, reservedVehicleBatches: { gt: 0 } }, data: { reservedVehicleBatches: { decrement: 1 } } });
-    return tx.vehicleProcessingBatch.findUniqueOrThrow({ where: { id: batchId } });
-  });
+  // Keep the economic reservation, including ambiguous network failures. An operator
+  // must reconcile provider state before granting any replacement pilot allowance.
+  return withRlsBypass((tx) => tx.vehicleProcessingBatch.updateMany({ where: { id: batchId, status: { notIn: ["COMPLETED", "CANCELED"] } }, data: { errorMessage: error instanceof Error ? error.message.slice(0, 1000) : "Vehicle batch failed" } }));
 }

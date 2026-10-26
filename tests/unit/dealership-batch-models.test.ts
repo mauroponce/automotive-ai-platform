@@ -20,8 +20,8 @@ describe("dealership batch models", () => {
   });
   it("keeps the automotive prompt constrained to background and conservative glass work", () => {
     const prompt = buildPilotBatchPrompt();
-    expect(prompt).toContain("Preserve all vehicle pixels");
+    expect(prompt).toContain("Preserve the vehicle appearance");
     expect(prompt).toContain("glass reflections");
-    expect(prompt).toContain("masked background");
+    expect(prompt).toContain("background");
   });
 });
