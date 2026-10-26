@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import sharp from "sharp";
 import { CreateBucketCommand, S3Client } from "@aws-sdk/client-s3";
 import { db, serviceDb, withTenantDb } from "@/lib/db";
-import { uploadOrganizationAsset, createVehicleProcessingBatch, queueVehicleProcessingBatch, reviewBatchItem } from "@/lib/dealership-batch/service";
+import { uploadOrganizationAsset, createVehicleProcessingBatch, queueVehicleProcessingBatch, reviewBatchItem, failVehicleBatch } from "@/lib/dealership-batch/service";
 import { submitVehicleBatchToOpenAI, reconcileVehicleBatchFromOpenAI } from "@/lib/dealership-batch/openai-batch";
 import type { BatchProvider } from "@/lib/dealership-batch/provider";
 import { storage } from "@/lib/storage";
@@ -94,4 +94,20 @@ suite("persistent authorized pilot with SIMULATED provider, PostgreSQL and priva
     session.email = null;
     expect((await output(new Request("http://localhost/output"), { params })).status).toBe(401);
   }, 30000);
+  it("does not resend or release allowance after an ambiguous simulated submission", async () => {
+    await serviceDb.pilotOrganizationEntitlement.update({ where: { organizationId: orgA }, data: { grantedVehicleBatches: { increment: 1 } } });
+    const batch = await createVehicleProcessingBatch({ organizationId: orgA, vehicleLabel: "SIMULATED timeout", sourceAssetIds: [sourceId], background: { source: "organization_asset", assetId: showroomId }, plateTreatment: "preserve", idempotencyKey: "pilot-integration-ambiguous" });
+    await queueVehicleProcessingBatch(orgA, batch.id);
+    const submit = vi.fn(async () => { throw new Error("SIMULATED response lost"); });
+    const provider: BatchProvider = { kind: "simulated", submit, retrieve: vi.fn(), output: vi.fn() };
+    await expect(submitVehicleBatchToOpenAI(batch.id, provider)).rejects.toThrow("response lost");
+    await expect(submitVehicleBatchToOpenAI(batch.id, provider)).rejects.toThrow("Submission already attempted");
+    expect(submit).toHaveBeenCalledTimes(1);
+    await failVehicleBatch(batch.id, new Error("SIMULATED exhausted retry"));
+    const persisted = await serviceDb.vehicleProcessingBatch.findUniqueOrThrow({ where: { id: batch.id } });
+    expect(persisted.entitlementReservedAt).not.toBeNull();
+    expect(persisted.startedAt).not.toBeNull();
+    expect((await serviceDb.pilotOrganizationEntitlement.findUniqueOrThrow({ where: { organizationId: orgA } })).reservedVehicleBatches).toBe(2);
+  });
+
 });
