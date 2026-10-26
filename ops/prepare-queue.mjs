@@ -5,5 +5,5 @@ if (!connectionString) throw new Error("DATABASE_URL is required to prepare the 
 
 const boss = new PgBoss({ connectionString });
 await boss.start();
-for (const name of ["image-generation", "vehicle-batch-dispatch", "vehicle-batch-reconcile", "plate-lab-experiment", "showroom-lab-experiment"]) await boss.createQueue(name);
+for (const name of ["image-generation", "vehicle-batch-dispatch", "vehicle-batch-reconcile"]) await boss.createQueue(name);
 await boss.stop({ graceful: false });

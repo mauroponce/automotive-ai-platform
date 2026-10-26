@@ -20,9 +20,7 @@ services:
       MIGRATION_DATABASE_URL: postgresql://automotive:automotive_local_only@postgres:5432/automotive?schema=public
       POSTGRES_APP_PASSWORD: automotive_app_local_only
       POSTGRES_DB: automotive
-      PLATE_LAB_STORAGE_ROOT: /var/lib/plate-lab
-      BASIC_EDIT_STORAGE_ROOT: /app/data/basic-edit
-    volumes: [".:/app", "web_node_modules:/app/node_modules", "plate_lab_data:/var/lib/plate-lab"]
+    volumes: [".:/app", "web_node_modules:/app/node_modules"]
     depends_on: { migrate: { condition: service_completed_successfully } }
     healthcheck: { test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"], interval: 10s, timeout: 5s, retries: 12 }
   worker:
@@ -31,8 +29,7 @@ services:
     env_file: .env.local
     environment:
       DATABASE_URL: postgresql://automotive_app:automotive_app_local_only@postgres:5432/automotive?schema=public
-      PLATE_LAB_STORAGE_ROOT: /var/lib/plate-lab
-    volumes: [".:/app", "worker_node_modules:/app/node_modules", "plate_lab_data:/var/lib/plate-lab"]
+    volumes: [".:/app", "worker_node_modules:/app/node_modules"]
     profiles: ["workers"]
     depends_on: { migrate: { condition: service_completed_successfully } }
   postgres:
@@ -48,4 +45,4 @@ services:
     ports: ["9000:9000", "9001:9001"]
     volumes: ["minio_data:/data"]
     healthcheck: { test: ["CMD", "mc", "ready", "local"], interval: 10s, timeout: 5s, retries: 12 }
-volumes: { postgres_data: {}, minio_data: {}, web_node_modules: {}, worker_node_modules: {}, plate_lab_data: {} }
+volumes: { postgres_data: {}, minio_data: {}, web_node_modules: {}, worker_node_modules: {} }

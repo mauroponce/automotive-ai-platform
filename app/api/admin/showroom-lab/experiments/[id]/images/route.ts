@@ -1,5 +1,0 @@
-import { requireSuperAdmin, AuthorizationError } from "@/lib/authorization";
-import { db } from "@/lib/db";
-import { addShowroomLabImages } from "@/lib/services/showroom-lab";
-
-export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) { try { const admin = await requireSuperAdmin(); const { id } = await params; const experiment = await db.showroomLabExperiment.findFirst({ where: { id, ownerId: admin.id, status: "DRAFT" } }); if (!experiment) return Response.json({ error: { code: "not_found", message: "Draft experiment not found" } }, { status: 404 }); const files = (await request.formData()).getAll("images").filter((value): value is File => value instanceof File); return Response.json({ data: await addShowroomLabImages(id, files) }, { status: 201 }); } catch (error) { if (error instanceof AuthorizationError) return Response.json({ error: { code: "forbidden", message: "Super admin access required" } }, { status: 403 }); return Response.json({ error: { code: "upload_failed", message: error instanceof Error ? error.message : "Unknown error" } }, { status: 400 }); } }

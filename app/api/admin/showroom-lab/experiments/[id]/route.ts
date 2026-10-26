@@ -1,4 +1,0 @@
-import { requireSuperAdmin, AuthorizationError } from "@/lib/authorization";
-import { db } from "@/lib/db";
-
-export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) { try { const admin = await requireSuperAdmin(); const { id } = await params; const data = await db.showroomLabExperiment.findFirst({ where: { id, ownerId: admin.id }, include: { images: { include: { runs: true } }, backgrounds: true } }); return data ? Response.json({ data }) : Response.json({ error: { code: "not_found", message: "Experiment not found" } }, { status: 404 }); } catch (error) { if (error instanceof AuthorizationError) return Response.json({ error: { code: "forbidden", message: "Super admin access required" } }, { status: 403 }); throw error; } }

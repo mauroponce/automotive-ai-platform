@@ -11,21 +11,14 @@ services:
     build: { context: ., target: production }
     command: node server.js
     env_file: .env.production
-    environment:
-      BASIC_EDIT_STORAGE_ROOT: /var/lib/basic-edit
-      PLATE_LAB_STORAGE_ROOT: /var/lib/plate-lab
     restart: unless-stopped
-    volumes: ["basic_edit_data:/var/lib/basic-edit", "plate_lab_data:/var/lib/plate-lab"]
     depends_on: { migrate: { condition: service_completed_successfully } }
   worker:
     image: ${WORKER_IMAGE_TAG:-ghcr.io/your-org/automotive-ai-platform:worker}
     build: { context: ., target: worker }
     command: node dist/worker.cjs
     env_file: .env.production
-    environment:
-      PLATE_LAB_STORAGE_ROOT: /var/lib/plate-lab
     restart: unless-stopped
-    volumes: ["plate_lab_data:/var/lib/plate-lab"]
     depends_on: { migrate: { condition: service_completed_successfully } }
   postgres:
     image: postgres:16-alpine
@@ -39,4 +32,4 @@ services:
     ports: ["80:80", "443:443"]
     volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro", "caddy_data:/data", "caddy_config:/config"]
     depends_on: [web]
-volumes: { postgres_data: {}, basic_edit_data: {}, plate_lab_data: {}, caddy_data: {}, caddy_config: {} }
+volumes: { postgres_data: {}, caddy_data: {}, caddy_config: {} }

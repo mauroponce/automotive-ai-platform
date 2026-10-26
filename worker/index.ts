@@ -3,8 +3,6 @@ import { queue } from "../lib/queue";
 import { enqueueVehicleBatchReconcile } from "../lib/queue";
 import { submitVehicleBatchToOpenAI, reconcileVehicleBatchFromOpenAI, ProviderBatchTerminalError } from "../lib/dealership-batch/openai-batch";
 import { failVehicleBatch, recordVehicleBatchError } from "../lib/dealership-batch/service";
-import { runPlateLabExperiment } from "../lib/services/plate-lab";
-import { runShowroomLabExperiment } from "../lib/services/showroom-lab";
 
 async function start() {
   const boss = await queue();
@@ -31,11 +29,6 @@ async function start() {
   await boss.work("vehicle-batch-reconcile", async (jobs) => {
     for (const message of jobs) { const { batchId } = message.data as { batchId: string }; try { const batch = await withRlsBypass((tx) => tx.vehicleProcessingBatch.findUnique({ where: { id: batchId } })); if (!batch?.providerBatchId) continue; const completed = await reconcileVehicleBatchFromOpenAI(batchId, batch.providerBatchId); if (!completed) await enqueueVehicleBatchReconcile(batchId); } catch (error) { if (error instanceof ProviderBatchTerminalError) await failVehicleBatch(batchId, error); else await recordVehicleBatchError(batchId, error); throw error; } }
   });
-  await boss.work("plate-lab-experiment", async (jobs) => {
-    for (const message of jobs) await runPlateLabExperiment((message.data as { experimentId: string }).experimentId);
-  });
-  await boss.work("showroom-lab-experiment", async (jobs) => {
-    for (const message of jobs) await runShowroomLabExperiment((message.data as { experimentId: string }).experimentId);
-  });
+
 }
 start().catch((error) => { console.error(error); process.exit(1); });
