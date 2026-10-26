@@ -3,7 +3,6 @@ import { claimBatchSubmission, batchInputUrls, markBatchItemFailed, recordBatchS
 import { openAIBatchProvider, type BatchProvider } from "./provider";
 
 type BatchOutput = { custom_id: string; response?: { request_id?: string; status_code: number; body?: { data?: Array<{ b64_json?: string }>; usage?: { input_tokens?: number; output_tokens?: number; input_tokens_details?: { image_tokens?: number; text_tokens?: number } } } }; error?: { message?: string } };
-export class ProviderBatchTerminalError extends Error {}
 
 export async function submitVehicleBatchToOpenAI(batchId: string, provider?: BatchProvider) {
   const prepared = await batchInputUrls(batchId);

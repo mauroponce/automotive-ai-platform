@@ -27,9 +27,11 @@ services:
     volumes: ["postgres_data:/var/lib/postgresql/data", "./ops/init-app-role.sh:/docker-entrypoint-initdb.d/10-app-role.sh:ro", "./ops/ensure-app-role.sql:/docker-entrypoint-initdb.d/ensure-app-role.sql:ro"]
     healthcheck: { test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"], interval: 10s, timeout: 5s, retries: 12 }
   caddy:
+    environment:
+      DOMAIN: ${DOMAIN:?Pass --env-file .env.production with a configured DOMAIN}
     image: caddy:2-alpine
     restart: unless-stopped
     ports: ["80:80", "443:443"]
     volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro", "caddy_data:/data", "caddy_config:/config"]
-    depends_on: [web]
+    depends_on: { web: { condition: service_healthy } }
 volumes: { postgres_data: {}, caddy_data: {}, caddy_config: {} }

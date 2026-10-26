@@ -9,5 +9,11 @@ case "$COMPOSE_FILE" in
   compose.yaml|compose.prod.yaml) ;;
   *) echo "Unsupported COMPOSE_FILE: $COMPOSE_FILE. Use compose.yaml or compose.prod.yaml." >&2; exit 2 ;;
 esac
-compose() { docker compose -f "$COMPOSE_FILE" "$@"; }
+compose() {
+  if [[ "$COMPOSE_FILE" == "compose.prod.yaml" ]]; then
+    docker compose --env-file .env.production -f "$COMPOSE_FILE" "$@"
+  else
+    docker compose -f "$COMPOSE_FILE" "$@"
+  fi
+}
 environment_name() { [[ "$COMPOSE_FILE" == "compose.prod.yaml" ]] && echo "production VPS" || echo "local development"; }

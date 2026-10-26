@@ -3,7 +3,7 @@ import { db } from "../lib/db";
 import { withRlsBypass } from "../lib/db";
 import { queue } from "../lib/queue";
 import { enqueueVehicleBatchReconcile } from "../lib/queue";
-import { submitVehicleBatchToOpenAI, reconcileVehicleBatchFromOpenAI, ProviderBatchTerminalError } from "../lib/dealership-batch/openai-batch";
+import { submitVehicleBatchToOpenAI, reconcileVehicleBatchFromOpenAI } from "../lib/dealership-batch/openai-batch";
 import { failVehicleBatch, recordVehicleBatchError } from "../lib/dealership-batch/service";
 
 async function start() {
@@ -16,7 +16,7 @@ async function start() {
     for (const message of jobs) { const { batchId } = message.data as { batchId: string }; try { await submitVehicleBatchToOpenAI(batchId); await enqueueVehicleBatchReconcile(batchId); } catch (error) { if (message.retryCount >= message.retryLimit) await failVehicleBatch(batchId, error); else await recordVehicleBatchError(batchId, error); throw error; } }
   });
   await boss.work("vehicle-batch-reconcile", async (jobs) => {
-    for (const message of jobs) { const { batchId } = message.data as { batchId: string }; try { const batch = await withRlsBypass((tx) => tx.vehicleProcessingBatch.findUnique({ where: { id: batchId } })); if (!batch?.providerBatchId) continue; const completed = await reconcileVehicleBatchFromOpenAI(batchId, batch.providerBatchId); if (!completed) await enqueueVehicleBatchReconcile(batchId); } catch (error) { if (error instanceof ProviderBatchTerminalError) await failVehicleBatch(batchId, error); else await recordVehicleBatchError(batchId, error); throw error; } }
+    for (const message of jobs) { const { batchId } = message.data as { batchId: string }; try { const batch = await withRlsBypass((tx) => tx.vehicleProcessingBatch.findUnique({ where: { id: batchId } })); if (!batch?.providerBatchId) continue; const completed = await reconcileVehicleBatchFromOpenAI(batchId, batch.providerBatchId); if (!completed) await enqueueVehicleBatchReconcile(batchId); } catch (error) { await recordVehicleBatchError(batchId, error); throw error; } }
   });
   const heartbeat = async () => {
     try { await db.$queryRaw`SELECT 1`; await writeFile("/tmp/automotive-worker-health", String(Date.now())); }
