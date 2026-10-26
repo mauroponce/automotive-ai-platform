@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import sharp from "sharp";
 import { CreateBucketCommand, S3Client } from "@aws-sdk/client-s3";
 import { db, serviceDb, withTenantDb } from "@/lib/db";
-import { uploadOrganizationAsset, createVehicleProcessingBatch, queueVehicleProcessingBatch, reviewBatchItem, failVehicleBatch } from "@/lib/dealership-batch/service";
+import { uploadOrganizationAsset, createVehicleProcessingBatch, queueVehicleProcessingBatch, reviewBatchItem, failVehicleBatch, markBatchItemFailed } from "@/lib/dealership-batch/service";
 import { submitVehicleBatchToOpenAI, reconcileVehicleBatchFromOpenAI } from "@/lib/dealership-batch/openai-batch";
 import type { BatchProvider } from "@/lib/dealership-batch/provider";
 import { storage } from "@/lib/storage";
@@ -108,6 +108,19 @@ suite("persistent authorized pilot with SIMULATED provider, PostgreSQL and priva
     expect(persisted.entitlementReservedAt).not.toBeNull();
     expect(persisted.startedAt).not.toBeNull();
     expect((await serviceDb.pilotOrganizationEntitlement.findUniqueOrThrow({ where: { organizationId: orgA } })).reservedVehicleBatches).toBe(2);
+  });
+
+  it("retains synthetic reported usage for failed images and aggregates it only once", async () => {
+    await serviceDb.pilotOrganizationEntitlement.update({ where: { organizationId: orgA }, data: { grantedVehicleBatches: { increment: 1 } } });
+    const batch = await createVehicleProcessingBatch({ organizationId: orgA, vehicleLabel: "SYNTHETIC usage accounting only", sourceAssetIds: [sourceId], background: { source: "organization_asset", assetId: showroomId }, plateTreatment: "preserve", idempotencyKey: "pilot-integration-failed-usage" });
+    const usage = { inputTokens: 1200, inputTokensDetails: { imageTokens: 1000, textTokens: 200 }, outputTokens: 100 };
+    // Synthetic provider-reported usage; no request or image generation occurs.
+    await Promise.all([1, 2].map(() => markBatchItemFailed(batch.id, batch.items[0].providerCustomId, "Synthetic invalid provider output", { usage })));
+    const result = await serviceDb.vehicleProcessingBatch.findUniqueOrThrow({ where: { id: batch.id }, include: { items: true } });
+    expect(result.actualProviderCostUsd).toBeCloseTo(.006);
+    expect(result.items[0].providerCostUsd).toBeCloseTo(.006);
+    expect(result.items[0].usage).toMatchObject(usage);
+    expect(result.items[0].status).toBe("FAILED");
   });
 
 });

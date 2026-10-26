@@ -112,7 +112,7 @@ export async function storeBatchItemResult(input: { batchId: string; customId: s
   try {
     normalized = await normalizeImageUpload(new File([new Uint8Array(input.output)], `${item.id}.png`, { type: input.contentType }), { maxBytes: 30_000_000, maxPixels: 40_000_000 });
   } catch {
-    await markBatchItemFailed(input.batchId, input.customId, "Provider returned an invalid image.");
+    await markBatchItemFailed(input.batchId, input.customId, "Provider returned an invalid image.", { usage: input.usage, simulated: input.simulated });
     return;
   }
   const output = normalized.body;
@@ -123,13 +123,27 @@ export async function storeBatchItemResult(input: { batchId: string; customId: s
   evaluation.rateCard = rateCard ?? "legacy_unversioned";
   evaluation.costStatus = input.simulated ? "simulated_no_charge" : providerCostUsd === null ? "reconciliation_required" : "token_estimate";
   await withRlsBypass(async (tx) => {
+    const [previous] = await tx.$queryRaw<Array<{ providerCostUsd: number | null }>>`SELECT "providerCostUsd" FROM "VehicleProcessingItem" WHERE id = ${item.id} FOR UPDATE`;
     const outputAsset = await tx.asset.upsert({ where: { objectKey: key }, update: { contentType: normalized.contentType, byteSize: output.length, checksum: normalized.checksum, width: normalized.width, height: normalized.height }, create: { organizationId: item.batch.organizationId, kind: "GENERATED", objectKey: key, contentType: normalized.contentType, byteSize: output.length, checksum: normalized.checksum, width: normalized.width, height: normalized.height } });
     const claimed = await tx.vehicleProcessingItem.updateMany({ where: { id: item.id, outputAssetId: null, status: { in: [VehicleProcessingItemStatus.QUEUED, VehicleProcessingItemStatus.SUBMITTED, VehicleProcessingItemStatus.PROCESSING, VehicleProcessingItemStatus.FAILED] } }, data: { status: VehicleProcessingItemStatus.NEEDS_REVIEW, outputAssetId: outputAsset.id, usage: input.usage as Prisma.InputJsonValue, evaluation: evaluation as Prisma.InputJsonValue, providerCostUsd, providerRequestId: input.requestId, errorMessage: null } });
-    if (claimed.count && providerCostUsd !== null) await tx.vehicleProcessingBatch.update({ where: { id: input.batchId }, data: { actualProviderCostUsd: { increment: providerCostUsd } } });
+    if (claimed.count && providerCostUsd !== null) await tx.vehicleProcessingBatch.update({ where: { id: input.batchId }, data: { actualProviderCostUsd: { increment: providerCostUsd - (previous?.providerCostUsd ?? 0) } } });
   });
 }
 
-export async function markBatchItemFailed(batchId: string, customId: string, message: string) { await withRlsBypass((tx) => tx.vehicleProcessingItem.updateMany({ where: { batchId, providerCustomId: customId, outputAssetId: null, status: { in: [VehicleProcessingItemStatus.QUEUED, VehicleProcessingItemStatus.SUBMITTED, VehicleProcessingItemStatus.PROCESSING] } }, data: { status: VehicleProcessingItemStatus.FAILED, errorMessage: message.slice(0, 1000) } })); }
+export async function markBatchItemFailed(batchId: string, customId: string, message: string, reported?: { usage: ImageUsage; simulated?: boolean }) {
+  await withRlsBypass(async (tx) => {
+    const item = await tx.vehicleProcessingItem.findFirst({ where: { batchId, providerCustomId: customId }, include: { batch: true } });
+    if (!item) return;
+    const rateCard = (item.batch.configuration as { rateCard?: keyof typeof BATCH_RATE_CARDS }).rateCard;
+    const cost = reported?.simulated ? 0 : reported && rateCard ? batchProviderCostUsd(reported.usage, rateCard) : null;
+    const claimed = await tx.vehicleProcessingItem.updateMany({ where: { id: item.id, outputAssetId: null, providerCostUsd: null, status: { in: ["QUEUED", "SUBMITTED", "PROCESSING", "FAILED"] } }, data: {
+      status: "FAILED", errorMessage: message.slice(0, 1000),
+      usage: reported?.usage as Prisma.InputJsonValue | undefined, providerCostUsd: cost,
+      evaluation: { simulated: reported?.simulated === true, rateCard: rateCard ?? "legacy_unversioned", costStatus: reported?.simulated ? "simulated_no_charge" : cost === null ? "reconciliation_required" : "token_estimate" },
+    } });
+    if (claimed.count && cost !== null) await tx.vehicleProcessingBatch.update({ where: { id: batchId }, data: { actualProviderCostUsd: { increment: cost } } });
+  });
+}
 
 export async function reviewBatchItem(organizationId: string, batchId: string, itemId: string, approved: boolean) {
   return withTenantDb(organizationId, async (tx) => {

@@ -21,7 +21,7 @@ describe("partial terminal Batch reconciliation with a SIMULATED provider", () =
   it("retains successful results from expired batches and accounts for failed and missing items", async () => {
     expect(await reconcileVehicleBatchFromOpenAI("batch", "simulated-batch", provider)).toBe(true);
     expect(storeBatchItemResult).toHaveBeenCalledWith(expect.objectContaining({ customId: "ok", simulated: true }));
-    expect(markBatchItemFailed).toHaveBeenCalledWith("batch", "error", "SIMULATED individual failure");
+    expect(markBatchItemFailed).toHaveBeenCalledWith("batch", "error", "SIMULATED individual failure", expect.objectContaining({ simulated: true }));
     expect(markBatchItemFailed).toHaveBeenCalledWith("batch", "missing", expect.stringContaining("result missing"));
     expect(completeVehicleBatch).toHaveBeenCalledWith("batch");
   });

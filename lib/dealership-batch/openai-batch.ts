@@ -33,13 +33,14 @@ export async function reconcileVehicleBatchFromOpenAI(batchId: string, providerB
       const line = JSON.parse(raw) as BatchOutput;
       if (!expected.has(line.custom_id) || seen.has(line.custom_id)) continue;
       seen.add(line.custom_id);
+      const providerUsage = line.response?.body?.usage;
+      const usage = { inputTokens: providerUsage?.input_tokens, outputTokens: providerUsage?.output_tokens, inputTokensDetails: { imageTokens: providerUsage?.input_tokens_details?.image_tokens, textTokens: providerUsage?.input_tokens_details?.text_tokens } };
       const image = line.response?.body?.data?.[0]?.b64_json;
       if (!image || line.response?.status_code !== 200) {
-        await markBatchItemFailed(batchId, line.custom_id, line.error?.message ?? "Provider returned no image output.");
+        await markBatchItemFailed(batchId, line.custom_id, line.error?.message ?? "Provider returned no image output.", { usage, simulated: api.kind === "simulated" });
         continue;
       }
-      const usage = line.response.body?.usage;
-      await storeBatchItemResult({ batchId, customId: line.custom_id, output: Buffer.from(image, "base64"), contentType: "image/png", usage: { inputTokens: usage?.input_tokens, outputTokens: usage?.output_tokens, inputTokensDetails: { imageTokens: usage?.input_tokens_details?.image_tokens, textTokens: usage?.input_tokens_details?.text_tokens } }, requestId: line.response.request_id, simulated: api.kind === "simulated" });
+      await storeBatchItemResult({ batchId, customId: line.custom_id, output: Buffer.from(image, "base64"), contentType: "image/png", usage, requestId: line.response.request_id, simulated: api.kind === "simulated" });
     }
   }
   for (const id of expected) if (!seen.has(id)) await markBatchItemFailed(batchId, id, `Provider batch ${batch.status}: result missing.`);
