@@ -4,6 +4,7 @@ import { CreateBucketCommand, S3Client } from "@aws-sdk/client-s3";
 import { db, serviceDb, withTenantDb } from "@/lib/db";
 import { uploadOrganizationAsset, createVehicleProcessingBatch, queueVehicleProcessingBatch, reviewBatchItem, failVehicleBatch, markBatchItemFailed } from "@/lib/dealership-batch/service";
 import { submitVehicleBatchToOpenAI, reconcileVehicleBatchFromOpenAI } from "@/lib/dealership-batch/openai-batch";
+import { registerVehicleBatchWorkers } from "@/lib/dealership-batch/worker";
 import type { BatchProvider } from "@/lib/dealership-batch/provider";
 import { storage } from "@/lib/storage";
 import { queue } from "@/lib/queue";
@@ -73,7 +74,11 @@ suite("persistent authorized pilot with SIMULATED provider, PostgreSQL and priva
       async retrieve(id) { return { id, status: "completed", output_file_id: "simulated-output" }; },
       async output() { return JSON.stringify({ custom_id: batch.items[0].providerCustomId, response: { status_code: 200, body: { data: [{ b64_json: image.toString("base64") }] } } }); },
     };
-    const providerId = await submitVehicleBatchToOpenAI(batch.id, provider);
+    const stopConsumers = await registerVehicleBatchWorkers(await queue(), provider, 0);
+    try {
+      await expect.poll(async () => (await serviceDb.vehicleProcessingBatch.findUniqueOrThrow({ where: { id: batch.id } })).status, { timeout: 20000 }).toBe("COMPLETED");
+    } finally { await stopConsumers(); }
+    const providerId = (await serviceDb.vehicleProcessingBatch.findUniqueOrThrow({ where: { id: batch.id } })).providerBatchId!;
     expect(await submitVehicleBatchToOpenAI(batch.id, provider)).toBe(providerId);
     await Promise.all([reconcileVehicleBatchFromOpenAI(batch.id, providerId, provider), reconcileVehicleBatchFromOpenAI(batch.id, providerId, provider)]);
     const item = await serviceDb.vehicleProcessingItem.findUniqueOrThrow({ where: { id: batch.items[0].id }, include: { outputAsset: true } });
