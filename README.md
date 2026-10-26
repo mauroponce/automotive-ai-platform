@@ -1,29 +1,34 @@
-# Automotive AI Photo Platform
+# Automotive AI Platform
 
-An OpenAI-first, multi-tenant automotive photo evaluation MVP. It is self-hosted with PostgreSQL, Auth.js, pg-boss, S3-compatible private object storage, and Docker Compose. It preserves original vehicle photos as records and labels every generated result as unverified until human review.
+Two modes: free single-photo license plate blur entirely in the browser, and an authorized advanced editing pilot using backend OpenAI Image Edit. React/TypeScript/ONNX/Canvas power the public tool. Next.js, Node.js, PostgreSQL/Prisma, pg-boss and private S3 power the pilot. Every generated result requires human review.
 
-## Start locally
+## Development
 
 ```bash
 cp .env.example .env.local
 docker compose up --build
+# Optional private object storage and worker:
+docker compose --profile object-storage --profile workers up --build
 ```
 
-Open http://localhost:3000. The supplied environment starts in safe demo mode and makes no OpenAI call. Use `docker compose down` to stop it.
+Open http://localhost:3000. The public tool needs no login or API key and sends no photo to the server. All public plate routes reuse the existing Canvas editor. Automatic suggestions require correction; no detections never guarantees no plate. The bundled weights are **not approved for commercial redistribution**; see [model provenance](docs/browser-detector-license.md).
+
+Google OAuth credentials are required for real sign-in. Registration starts an exact 14-day organization trial. The trial only grants portal access; advanced work additionally requires a manually provisioned pilot batch allowance. Paid dispatch is disabled unless both `APP_DEMO_MODE=false` and `OPENAI_PAID_PROCESSING_ENABLED=true` are explicitly authorized server-side. Never enable these for tests.
 
 ## Verification
 
 ```bash
 npm ci
-npm run typecheck && npm run lint && npm test && npm run build
+npm run db:generate
+npm run typecheck
+npm run lint
+npm test
+npm run build
+npm run build:worker
+npx playwright install chromium
+npm run test:e2e
 ```
 
-The default local stack exposes the app at http://localhost:3000 and PostgreSQL only on its internal Docker network. Basic V1 stores its private image files under `data/basic-edit/` on the local machine and makes no OpenAI or S3 request. The local detector is an evaluation-only aid; every suggested plate region must be reviewed manually.
+`npm run test:integration` uses a **disposable** migrated PostgreSQL database with distinct owner/runtime URLs and a private S3 test bucket. It skips connected tests when services are not configured. See [local development](docs/local-development.md) for environment and acceptance coverage; CI supplies both services. Provider responses in integration tests are explicitly simulated, never paid inference.
 
-MinIO and the background worker are reserved for object-storage and asynchronous flows: `docker compose --profile object-storage --profile workers up --build`. Default local MinIO credentials are documented in `.env.example`; change them outside development.
-
-The one-shot Compose migrator applies database migrations automatically. Seed the prompt/model registry with `docker compose exec web npx tsx prisma/seed.ts`. Migrations use the owner URL, while the application and worker use the limited `automotive_app` role so tenant RLS policies remain effective.
-
-See `docs/hetzner-deployment.md` for Hetzner, `docs/openai-setup.md` for explicit paid inference authorization, and `docs/api-contract.md` for the API.
-
-For the local Basic V1 plate-blur workflow, see `docs/local-basic-plate-blur.md`.
+See [architecture](docs/architecture.md), [commercial decisions](docs/comercial.md), [deployment](docs/hetzner-deployment.md), [OpenAI verification](docs/openai-setup.md) and [roadmap](docs/roadmap.md). Credits and payments are pending; no subscription or payment provider is implemented in this sprint.

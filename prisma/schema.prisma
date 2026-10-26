@@ -95,6 +95,7 @@ model User {
   plateLabExperiments PlateLabExperiment[] @relation("PlateLabExperimentOwner")
   showroomLabExperiments ShowroomLabExperiment[] @relation("ShowroomLabExperimentOwner")
 }
+// Retired laboratory tables remain for data preservation. See docs/data-model.md.
 model ShowroomLabExperiment {
   id String @id @default(cuid())
   ownerId String
