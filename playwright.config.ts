@@ -4,5 +4,5 @@ export default defineConfig({
   timeout: 120000,
   workers: 1,
   use: { baseURL: "http://127.0.0.1:3100", browserName: "chromium", acceptDownloads: true, trace: "retain-on-failure" },
-  webServer: { command: "npm run start -- --hostname 127.0.0.1 --port 3100", url: "http://127.0.0.1:3100/api/health", reuseExistingServer: false, timeout: 60000, env: { APP_DEMO_MODE: "true", OPENAI_PAID_PROCESSING_ENABLED: "false" } },
+  webServer: { command: "npm run start -- --hostname 127.0.0.1 --port 3100", url: "http://127.0.0.1:3100/api/health", reuseExistingServer: false, timeout: 60000, env: { APP_DEMO_MODE: "true", OPENAI_PAID_PROCESSING_ENABLED: "false", NEXTAUTH_URL: "http://127.0.0.1:3100", NEXTAUTH_SECRET: "disposable-e2e-secret-never-use-in-production" } },
 });
